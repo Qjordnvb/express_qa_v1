@@ -19,7 +19,7 @@ export class LoginPage extends BasePage {
       // Inicializamos los localizadores usando el objeto 'page' heredado.
         this.emailInput = page.locator('#input-email');
         this.passwordInput = page.locator('#input-password');
-        this.loginButton = page.locator('button[type="submit"]');
+        this.loginButton = page.locator('input[value="Login"]');
     }
 
     async enterEmail(email: string): Promise<void> {

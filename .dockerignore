@@ -1,0 +1,15 @@
+# Ignorar dependencias de Node, ya que se instalan dentro del contenedor.
+node_modules/
+
+# Ignorar archivos de configuración de IDEs.
+.vscode/
+.idea/
+
+# Ignorar logs y reportes de pruebas locales.
+test-results/
+playwright-report/
+npm-debug.log
+
+# Ignorar el propio Dockerfile
+Dockerfile
+.dockerignore
