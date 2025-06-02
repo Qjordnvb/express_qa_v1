@@ -13,6 +13,7 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests',
+  snapshotPathTemplate: 'snapshots/{testFileName}/{arg}.png',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -32,7 +33,7 @@ export default defineConfig({
   use: {
     baseURL: 'https://ecommerce-playground.lambdatest.io/',
     trace: 'on-first-retry',
-
+    viewport: { width: 1280, height: 720 },
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
 
   },

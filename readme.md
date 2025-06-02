@@ -1,4 +1,4 @@
-# Express QA Framework 🚀
+# Visionary QA Framework 🚀
 
 ## Descripción
 
@@ -63,19 +63,29 @@ docker build -t express_qa_v1 .
 
 #### 2. Ejecutar las Pruebas
 
-Este comando inicia un contenedor a partir de la imagen, ejecuta las pruebas y conecta la carpeta de reportes del contenedor a tu máquina local para que puedas ver los resultados.
+Este comando inicia un contenedor a partir de la imagen, ejecuta las pruebas y conecta las carpetas clave (reportes, tests, snapshots y resultados de tests) del contenedor a tu máquina local para que puedas ver los resultados.
 
 ```bash
 # Para macOS / Linux
-docker run --rm -it -v $(pwd)/playwright-report:/app/playwright-report express_qa_v1
+docker run --rm -it \
+  -v $(pwd)/playwright-report:/app/playwright-report \
+  -v $(pwd)/tests:/app/tests \
+  -v $(pwd)/snapshots:/app/snapshots \
+  -v $(pwd)/test-results:/app/test-results \
+  express_qa_v1
 
 # Para Windows (Command Prompt)
-docker run --rm -it -v %cd%/playwright-report:/app/playwright-report express_qa_v1
+docker run --rm -it ^
+  -v %cd%/playwright-report:/app/playwright-report ^
+  -v %cd%/tests:/app/tests ^
+  -v %cd%/snapshots:/app/snapshots ^
+  -v %cd%/test-results:/app/test-results ^
+  express_qa_v1
 ```
 
 #### 3. Ver el Reporte de Pruebas
 
-Una vez que el comando anterior termine, se habrá creado una carpeta `playwright-report` en tu proyecto. Para ver el reporte HTML interactivo, ejecuta:
+Una vez que el comando anterior termine, se habrán actualizado las carpetas `playwright-report/` y `test-results/` en tu proyecto. Para ver el reporte HTML interactivo, ejecuta:
 
 ```bash
 npx playwright show-report
@@ -89,6 +99,8 @@ npx playwright show-report
 /
 ├── pages/         # Clases del Page Object Model (POM) que representan las páginas.
 ├── tests/         # Los archivos de prueba (`.spec.ts`).
+├── snapshots/     # Imágenes de referencia (snapshots) para las pruebas visuales.
+├── test-results/  # Resultados detallados de las ejecuciones de prueba (incluye diffs visuales).
 ├── utils/         # Funciones de ayuda y utilidades reutilizables.
 ├── .dockerignore  # Especifica qué archivos ignorar al construir la imagen de Docker.
 ├── Dockerfile     # La "receta" para construir nuestro entorno de pruebas en un contenedor.
