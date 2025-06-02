@@ -26,6 +26,7 @@ lerna-debug.log*
 
 # Reportes y resultados de pruebas
 /html-report
+/snapshots
 
 # Archivos de compilación de TypeScript
 *.tsbuildinfo
