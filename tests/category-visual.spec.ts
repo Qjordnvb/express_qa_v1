@@ -20,9 +20,6 @@ test.describe('Category Page Visual Tests', () => {
     // Aumentamos un poco la espera para asegurar que el submenú tenga tiempo de renderizarse completamente
     await page.waitForTimeout(1000); // Aumentado a 1 segundo
 
-    // --- LÍNEA DE DEBUG: FOTO DESPUÉS DEL HOVER EN COMPONENTS Y LA ESPERA ---
-    await page.screenshot({ path: `debug-after-components-hover-${browserNameForDebug}.png`, fullPage: true });
-    // --------------------------------------------------------------------
 
     // Añadimos una espera explícita para que "Monitors" sea visible, con un timeout propio
     await page.waitForLoadState('networkidle'); // Esperamos a que la red esté inactiva
