@@ -1,0 +1,42 @@
+# Nombre del workflow que aparecerá en la pestaña "Actions" de GitHub.
+name: CI de Pruebas con Playwright y Docker
+
+# Define cuándo se debe ejecutar este workflow.
+on:
+  # Se dispara en cada 'push' a la rama 'main'.
+  push:
+    branches: [ main ]
+  # También permite ejecutarlo manualmente desde la UI de GitHub.
+  workflow_dispatch:
+
+# Define los trabajos (jobs) que se ejecutarán.
+jobs:
+  # Nombramos nuestro único job como 'build-and-test'.
+  build-and-test:
+    # El tipo de máquina virtual en la que se ejecutará el job.
+    # 'ubuntu-latest' es una opción estándar y confiable.
+    runs-on: ubuntu-latest
+
+    # La secuencia de pasos que ejecutará el job.
+    steps:
+      # Paso 1: Checkout del código del repositorio.
+      # Utiliza una acción predefinida de GitHub para descargar tu código en el runner.
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      # Paso 2: Construir la imagen de Docker.
+      # Ejecuta el comando 'docker build' que usamos localmente.
+      # El -t le pone un nombre (tag) a la imagen para que podamos referenciarla en el siguiente paso.
+      - name: Construir la imagen de Docker
+        run: docker build -t express_qa_v1 .
+
+      # Paso 3: Ejecutar las pruebas dentro del contenedor Docker.
+      # Este es el mismo comando 'docker run' de nuestro README.md, pero sin '-it' ya que no es una sesión interactiva.
+      # Los volúmenes aseguran que los resultados (reportes, etc.) se creen dentro del runner,
+      # lo que nos preparará para la siguiente tarea de subir artefactos.
+      - name: Ejecutar las pruebas dentro del contenedor
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/playwright-report:/app/playwright-report \
+            -v ${{ github.workspace }}/test-results:/app/test-results \
+            express_qa_v1
