@@ -1,37 +1,37 @@
 // pages/BasePage.ts
 
-// Importamos los tipos 'Page' y 'Locator' desde Playwright.
-// 'Page' es el objeto que representa la pestaña del navegador.
-// 'Locator' es un objeto que representa una forma de encontrar un elemento en la página.
 import { type Page, type Locator } from '@playwright/test';
 
-// Exportamos la clase para que pueda ser utilizada (heredada) por otras clases de página.
 export class BasePage {
-  // --- PROPIEDADES ---
-
-  // Hacemos que la instancia de la página ('page') sea una propiedad de la clase.
-  // Es 'readonly' porque no cambiará después de ser inicializada en el constructor.
-  // Es 'protected' para que las clases que hereden de BasePage puedan acceder a ella,
-  // pero no se pueda acceder desde fuera de la clase y sus subclases.
   protected readonly page: Page;
 
-  // --- CONSTRUCTOR ---
-
-  // El constructor se ejecuta cuando se crea una nueva instancia de la clase.
-  // Acepta un objeto 'page' como argumento, que será pasado desde nuestros tests.
   constructor(page: Page) {
-    // Asignamos el objeto 'page' recibido a la propiedad 'this.page' de la clase.
     this.page = page;
   }
 
-  // --- MÉTODOS ---
-
-  /**
-   * Método para navegar a una ruta específica del sitio.
-   * Utiliza la 'baseURL' que configuramos en 'playwright.config.ts'.
-   * @param {string} path - La ruta a la que se desea navegar (ej. '/index.php?route=account/login')
-   */
   async navigate(path: string): Promise<void> {
     await this.page.goto(path);
+  }
+
+  /**
+   * Intenta localizar un elemento probando una lista de diferentes Locators en orden.
+   * Devuelve el primer localizador que encuentra un elemento visible.
+   * @param {Locator[]} locators - Un array de objetos Locator para probar.
+   * @param {string} description - Una descripción del elemento para los mensajes de error.
+   * @returns {Promise<Locator>} Una promesa que se resuelve con el primer localizador válido encontrado.
+   * @throws {Error} Si ningún localizador encuentra un elemento visible.
+   */
+  async findSmartly(locators: Locator[], description: string): Promise<Locator> {
+    for (const locator of locators) {
+      try {
+        await locator.waitFor({ state: 'visible', timeout: 2000 });
+        console.log(`Elemento '${description}' encontrado.`);
+        return locator;
+      } catch (error) {
+        // Silenciosamente intenta con el siguiente localizador.
+      }
+    }
+    // Si el bucle termina, es porque ningún localizador funcionó.
+    throw new Error(`No se pudo encontrar el elemento '${description}' con ninguna de las opciones de localizador proporcionadas.`);
   }
 }
