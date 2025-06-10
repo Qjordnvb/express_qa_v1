@@ -37,6 +37,7 @@ test.describe('Search, Filter, Add to Cart, and Direct Checkout Flow', () => {
 
     // 5. En la página de detalle del producto, verificar título y añadir al carrito
     await productDetailPage.verifyProductTitle(productToSelect);
+
     await productDetailPage.clickAddToCart(); // Esto ahora espera el toast
     await productDetailPage.verifySuccessToastContainsProduct(productToSelect);
 

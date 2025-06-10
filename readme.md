@@ -92,6 +92,18 @@ npx playwright show-report
 ```
 *(Si el puerto por defecto está en uso, puedes especificar otro: `npx playwright show-report --port 9324`)*
 
+
+## Estrategia de Pruebas y Fiabilidad
+
+### Reintentos en CI
+
+Para mejorar la estabilidad y fiabilidad de nuestra suite de pruebas en el entorno de Integración Continua, hemos implementado una estrategia de reintentos. Las pruebas que fallen en CI se reintentarán automáticamente hasta 2 veces antes de ser marcadas como fallidas.
+
+* **Localmente (`docker run ...`):** Los reintentos están **desactivados** (`retries: 0`) para permitir una depuración más rápida y obtener feedback inmediato sobre los fallos.
+* **En CI (GitHub Actions):** Los reintentos están **activados** (`retries: 2`) para mitigar fallos intermitentes (o "flaky tests") causados por problemas temporales de red o de entorno.
+
+Esta configuración se gestiona en `playwright.config.ts` y se activa automáticamente gracias a la variable de entorno `CI` que provee GitHub Actions.
+
 ---
 ## Estructura del Proyecto
 

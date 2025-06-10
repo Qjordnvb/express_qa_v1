@@ -1,24 +1,33 @@
 // pages/HeaderPage.ts
 import { type Page, type Locator } from '@playwright/test';
-import { BasePage } from './BasePage'; // Asumiendo que tenemos BasePage para el método navigate si fuera necesario
+import { BasePage } from './BasePage';
 
-export class HeaderPage extends BasePage { // Heredamos de BasePage
-  // Locators específicos del encabezado
-  readonly searchInput: Locator;
-  readonly searchButton: Locator;
+export class HeaderPage extends BasePage {
+  private readonly searchInputLocators: Locator[];
+  private readonly searchButtonLocators: Locator[];
 
   constructor(page: Page) {
-    super(page); // Llama al constructor de BasePage
+    super(page);
 
-    // Inicializamos los locators
-    this.searchInput = page.getByRole('textbox', { name: 'Search For Products' });
-    this.searchButton = page.getByRole('button', { name: 'Search' });
+    // Creamos arrays de Locators, combinando las mejores prácticas.
+    this.searchInputLocators = [
+      this.page.getByRole('textbox', { name: 'Search For Products' }), // El original y más robusto.
+      this.page.locator("input[name='search']")                       // Un selector de respaldo.
+    ];
+
+    this.searchButtonLocators = [
+      this.page.getByRole('button', { name: 'Search' }),          // El original y más robusto.
+      this.page.locator("#search button")                          // Un selector de respaldo.
+    ];
   }
 
-  // Métodos de acción
   async searchProduct(productName: string): Promise<void> {
-    await this.searchInput.click(); // A veces es necesario hacer clic primero
-    await this.searchInput.fill(productName);
-    await this.searchButton.click();
+    // La lógica aquí no cambia, pero ahora pasa una lista de Locators a nuestro método mejorado.
+    const searchInput = await this.findSmartly(this.searchInputLocators, 'Barra de Búsqueda');
+    const searchButton = await this.findSmartly(this.searchButtonLocators, 'Botón de Búsqueda');
+
+    await searchInput.click();
+    await searchInput.fill(productName);
+    await searchButton.click();
   }
 }
