@@ -118,3 +118,45 @@ Esta configuración se gestiona en `playwright.config.ts` y se activa automátic
 ├── Dockerfile     # La "receta" para construir nuestro entorno de pruebas en un contenedor.
 └── playwright.config.ts # Archivo de configuración principal de Playwright.
 ```
+## Ecosistema de Pruebas con IA 🤖
+
+Este framework incluye un **orquestador de pruebas impulsado por IA** diseñado para acelerar drásticamente la creación de nuevos tests. El sistema puede tomar una historia de usuario y generar un Page Object y un archivo de prueba de Playwright completamente funcionales.
+
+### Flujo de Trabajo de Generación de Pruebas
+
+1.  **Crear un Caso de Prueba (`.testcase.json`)**
+    * En la carpeta `orchestrator/user-stories/`, crea un archivo `.json` con la siguiente estructura:
+      ```json
+      {
+        "name": "Nombre Descriptivo del Test",
+        "path": "/ruta/de/la/pagina/a/probar",
+        "userStory": "La historia de usuario en lenguaje natural que describe el flujo a probar."
+      }
+      ```
+    * El `path` se combinará con la `baseURL` definida en `playwright.config.ts`.
+
+2.  **Configurar la Clave de API**
+    * Crea un archivo `.env` en la raíz del proyecto.
+    * Añade tu clave de API de Google AI:
+      ```
+      GOOGLE_API_KEY="TU_API_KEY_AQUI"
+      ```
+    * Asegúrate de que el archivo `.env` esté listado en tu `.gitignore`.
+
+3.  **Ejecutar el Orquestador**
+    * Lanza el proceso completo con el siguiente comando:
+      ```bash
+      npm run orchestrate -- <ruta/al/archivo.testcase.json>
+      ```
+    * **Ejemplo:**
+      ```bash
+      npm run orchestrate -- orchestrator/user-stories/guest-checkout.testcase.json
+      ```
+
+### El Ciclo de Retroalimentación (Human-in-the-Loop)
+
+La IA proporciona una primera versión del código. Si el test generado falla debido a selectores incorrectos (un "fallo de precondición"), este es el flujo de trabajo para refinarlo:
+
+1.  **Analizar el Error:** Revisa la salida de la consola y el reporte de Playwright para identificar qué selector falló.
+2.  **Corregir el "Plano":** Abre el archivo `.ai-assets.json` correspondiente a tu caso de prueba. Este archivo contiene los "planos" que la IA generó. Localiza el selector incorrecto y corrígelo con el valor correcto que puedes obtener usando el inspector del navegador o de Playwright.
+3.  **Re-ejecutar:** Vuelve a lanzar el comando `npm run orchestrate`. El sistema ahora usará tu plano corregido para generar el código, y la prueba debería pasar.

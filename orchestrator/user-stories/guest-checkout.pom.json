@@ -1,0 +1,44 @@
+{
+  "className": "LoginPage",
+  "locators": [
+    {
+      "name": "emailInput",
+      "actions": [
+        "fill"
+      ],
+      "selectors": [
+        {
+          "type": "getByLabel",
+          "value": "E-Mail Address"
+        }
+      ]
+    },
+    {
+      "name": "passwordInput",
+      "actions": [
+        "fill"
+      ],
+      "selectors": [
+        {
+          "type": "getByLabel",
+          "value": "Password"
+        }
+      ]
+    },
+    {
+      "name": "loginButton",
+      "actions": [
+        "click"
+      ],
+      "selectors": [
+        {
+          "type": "getByRole",
+          "value": "button",
+          "options": {
+            "name": "Login"
+          }
+        }
+      ]
+    }
+  ]
+}

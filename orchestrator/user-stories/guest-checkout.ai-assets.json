@@ -1,0 +1,68 @@
+{
+  "pageObject": {
+    "className": "LoginPage",
+    "locators": [
+      {
+        "name": "emailInput",
+        "actions": [
+          "fill"
+        ],
+        "selectors": [
+          {
+            "type": "getByLabel",
+            "value": "E-Mail Address"
+          }
+        ]
+      },
+      {
+        "name": "passwordInput",
+        "actions": [
+          "fill"
+        ],
+        "selectors": [
+          {
+            "type": "getByLabel",
+            "value": "Password"
+          }
+        ]
+      },
+      {
+        "name": "loginButton",
+        "actions": [
+          "click"
+        ],
+        "selectors": [
+          {
+            "type": "getByRole",
+            "value": "button",
+            "options": {
+              "name": "Login"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "testSteps": [
+    {
+      "action": "navigateToLoginPage",
+      "params": []
+    },
+    {
+      "action": "fillEmailInput",
+      "params": [
+        "testuser@example.com"
+      ]
+    },
+    {
+      "action": "fillPasswordInput",
+      "params": [
+        "password123"
+      ]
+    },
+    {
+      "action": "clickLoginButton",
+      "params": []
+    }
+  ]
+}

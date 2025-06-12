@@ -1,0 +1,22 @@
+[
+  {
+    "action": "navigateToLoginPage",
+    "params": []
+  },
+  {
+    "action": "fillEmailInput",
+    "params": [
+      "test@example.com"
+    ]
+  },
+  {
+    "action": "fillPasswordInput",
+    "params": [
+      "password123"
+    ]
+  },
+  {
+    "action": "clickLoginButton",
+    "params": []
+  }
+]

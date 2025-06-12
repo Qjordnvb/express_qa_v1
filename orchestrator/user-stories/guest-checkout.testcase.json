@@ -1,0 +1,5 @@
+{
+  "name": "Successful Login Test",
+  "url": "https://ecommerce-playground.lambdatest.io/index.php?route=account/login",
+  "userStory": "Como un usuario registrado, quiero ingresar mi email y mi contraseña en la página de login y hacer clic en el botón de login para acceder a mi cuenta."
+}

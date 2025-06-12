@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    /* Opciones del Compilador */
+    "target": "ES2021",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+
+    /* Verificaciones Estrictas */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* Opciones de Módulos */
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  /* Archivos a Incluir en la Compilación */
+  "include": ["tests/**/*.ts", "pages/**/*.ts", "scripts/**/*.ts"]
+}

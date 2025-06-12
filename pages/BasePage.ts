@@ -34,4 +34,22 @@ export class BasePage {
     // Si el bucle termina, es porque ningún localizador funcionó.
     throw new Error(`No se pudo encontrar el elemento '${description}' con ninguna de las opciones de localizador proporcionadas.`);
   }
+
+  async handleCookieBannerIfNeeded(): Promise<void> {
+    // Usamos una expresión regular para encontrar botones con texto como "Accept", "Agree", "OK", "Aceptar", etc.
+    const acceptButton = this.page.getByRole('button', { name: /Accept|Agree|OK|Aceptar|Entendido/i });
+
+    try {
+      // Esperamos un tiempo corto (ej. 3 segundos). Si no aparece, no hacemos nada.
+      await acceptButton.waitFor({ state: 'visible', timeout: 3000 });
+      console.log('Banner de cookies detectado. Aceptando...');
+      await acceptButton.click();
+    } catch (error) {
+      // El banner no apareció, lo cual está bien. El test continúa.
+      console.log('No se detectó banner de cookies.');
+    }
+  }
+
 }
+
+
