@@ -1,0 +1,5 @@
+{
+  "name": "Error user not register",
+  "path": "/index.php?route=account/login",
+  "userStory": "Como usuario intento hacer login con credenciales incorrectas y se genera un mensaje de error."
+}

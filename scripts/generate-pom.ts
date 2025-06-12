@@ -32,7 +32,6 @@ if (!definitionPath) {
   process.exit(1);
 }
 
-// ---- LA CORRECCIÓN DEFINITIVA ESTÁ AQUÍ ----
 // 1. Leemos el archivo completo que nos pasa el orquestador
 const fullDefinition: FullDefinition = JSON.parse(fs.readFileSync(definitionPath, 'utf8'));
 
@@ -50,7 +49,6 @@ if (!locators || !className) {
   console.error('Error: El objeto "pageObject" en el archivo JSON debe contener las propiedades "className" y "locators".');
   process.exit(1);
 }
-// ------------------------------------------
 
 const methods = locators.map(loc => {
   const description = loc.name.replace(/([A-Z])/g, ' $1').trim();
@@ -105,7 +103,7 @@ ${loc.selectors.map(s => {
 const template = `// pages/${className}.ts
 // Archivo generado automáticamente por 'npm run orchestrate'
 import { type Page, type Locator } from '@playwright/test';
-import { BasePage } from './BasePage';
+import { BasePage } from '../BasePage';
 
 export class ${className} extends BasePage {
   constructor(page: Page) {
