@@ -104,20 +104,6 @@ Para mejorar la estabilidad y fiabilidad de nuestra suite de pruebas en el entor
 
 Esta configuración se gestiona en `playwright.config.ts` y se activa automáticamente gracias a la variable de entorno `CI` que provee GitHub Actions.
 
----
-## Estructura del Proyecto
-
-```
-/
-├── pages/         # Clases del Page Object Model (POM) que representan las páginas.
-├── tests/         # Los archivos de prueba (`.spec.ts`).
-├── snapshots/     # Imágenes de referencia (snapshots) para las pruebas visuales.
-├── test-results/  # Resultados detallados de las ejecuciones de prueba (incluye diffs visuales).
-├── utils/         # Funciones de ayuda y utilidades reutilizables.
-├── .dockerignore  # Especifica qué archivos ignorar al construir la imagen de Docker.
-├── Dockerfile     # La "receta" para construir nuestro entorno de pruebas en un contenedor.
-└── playwright.config.ts # Archivo de configuración principal de Playwright.
-```
 ## Ecosistema de Pruebas con IA 🤖
 
 Este framework incluye un **orquestador de pruebas impulsado por IA** diseñado para acelerar drásticamente la creación de nuevos tests. El sistema puede tomar una historia de usuario y generar un Page Object y un archivo de prueba de Playwright completamente funcionales.
@@ -160,3 +146,18 @@ La IA proporciona una primera versión del código. Si el test generado falla de
 1.  **Analizar el Error:** Revisa la salida de la consola y el reporte de Playwright para identificar qué selector falló.
 2.  **Corregir el "Plano":** Abre el archivo `.ai-assets.json` correspondiente a tu caso de prueba. Este archivo contiene los "planos" que la IA generó. Localiza el selector incorrecto y corrígelo con el valor correcto que puedes obtener usando el inspector del navegador o de Playwright.
 3.  **Re-ejecutar:** Vuelve a lanzar el comando `npm run orchestrate`. El sistema ahora usará tu plano corregido para generar el código, y la prueba debería pasar.
+
+---
+## Estructura del Proyecto
+
+```
+/
+├── pages/         # Clases del Page Object Model (POM) que representan las páginas.
+├── tests/         # Los archivos de prueba (`.spec.ts`).
+├── snapshots/     # Imágenes de referencia (snapshots) para las pruebas visuales.
+├── test-results/  # Resultados detallados de las ejecuciones de prueba (incluye diffs visuales).
+├── utils/         # Funciones de ayuda y utilidades reutilizables.
+├── .dockerignore  # Especifica qué archivos ignorar al construir la imagen de Docker.
+├── Dockerfile     # La "receta" para construir nuestro entorno de pruebas en un contenedor.
+└── playwright.config.ts # Archivo de configuración principal de Playwright.
+```

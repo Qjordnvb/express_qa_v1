@@ -1,15 +1,28 @@
 // orchestrator/index.ts
 import * as dotenv from 'dotenv';
-dotenv.config();
+import * as path from 'path';
 
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 import * as fs from 'fs';
 import { execSync } from 'child_process';
-import { chromium } from '@playwright/test'; // <-- ¡Importamos Playwright!
-import { getTestAssetsFromIA } from './llm-service';
+import { chromium, Page, Browser} from '@playwright/test';
+import { getLlmService } from './llm-service';
+import playwrightConfig from '../playwright.config';
+
+const provider = process.env.LLM_PROVIDER;
+if (!provider) {
+    throw new Error('Error de Configuración: La variable LLM_PROVIDER no está definida en tu archivo .env');
+}
+if (provider.toLowerCase() === 'openai' && !process.env.OPENAI_API_KEY) {
+    throw new Error('Error de Configuración: Has seleccionado "openai" pero OPENAI_API_KEY no está definida en tu archivo .env');
+}
+if (provider.toLowerCase() === 'google' && !process.env.GOOGLE_API_KEY) {
+    throw new Error('Error de Configuración: Has seleccionado "google" pero GOOGLE_API_KEY no está definida en tu archivo .env');
+}
 
 interface TestCase {
   name: string;
-  url: string;
+  path: string;
   userStory: string;
 }
 
@@ -23,17 +36,33 @@ async function main() {
   const testCase: TestCase = JSON.parse(fs.readFileSync(testCasePath, 'utf-8'));
   console.log(`Caso de prueba leído: "${testCase.name}"`);
 
+  // Extraemos la baseURL de la configuración de Playwright
+  const baseURL = playwrightConfig.use?.baseURL;
+  if (!baseURL) {
+    throw new Error("baseURL no está definida en playwright.config.ts");
+  }
+
+  const fullUrl = new URL(testCase.path, baseURL).toString();
+
+  const browser: Browser = await chromium.launch();
+
   // 2. Usar Playwright para navegar y tomar una captura de pantalla
-  console.log(`Navegando a ${testCase.url} para tomar una captura...`);
-  const browser = await chromium.launch();
-  const page = await browser.newPage();
-  await page.goto(testCase.url);
-  const screenshotBuffer = await page.screenshot();
-  await browser.close();
-  console.log("Captura de pantalla tomada.");
+
+    const page: Page = await browser.newPage();
+
+    console.log(`Navegando a ${fullUrl} para tomar una captura...`);
+    await page.goto(fullUrl, { waitUntil: 'networkidle' });
+    const screenshotBuffer = await page.screenshot();
+    console.log("Captura de pantalla tomada.");
+
+    await page.close();
+
+
 
   // 3. Llamar a la IA con la historia de usuario y la imagen (en base64)
-  const testAssets = await getTestAssetsFromIA(testCase.userStory, screenshotBuffer.toString('base64'));
+  const llmService = getLlmService();
+
+  const testAssets = await llmService.getTestAssetsFromIA(testCase.userStory, screenshotBuffer.toString('base64'));
   if (!testAssets) { /* ... */ process.exit(1); }
 
   const fullDefinitionPath = testCasePath.replace('.testcase.json', '.ai-assets.json');
@@ -46,7 +75,7 @@ async function main() {
 
   // 5. Generar el archivo de Test (.spec.ts)
   console.log("\n--- Generando Archivo de Prueba ---");
-  execSync(`npm run generate:spec -- ${fullDefinitionPath}`, { stdio: 'inherit' });
+  execSync(`npm run generate:spec -- ${fullDefinitionPath} ${testCasePath}`, { stdio: 'inherit' });
 
   // 6. Ejecutar el test recién creado
   console.log("\n--- Ejecutando Prueba Generada ---");
@@ -59,8 +88,10 @@ async function main() {
     execSync(testCommand, { stdio: 'inherit' });
     console.log("\n¡VISIÓN COMPLETA ALCANZADA! La prueba generada por IA se ha ejecutado.");
   } catch (error) {
-    console.error("\nLa prueba generada por IA ha fallado.");
+    console.error("\nEl proceso del orquestador ha fallado:", error);
+  } finally {
+    await browser.close();
   }
 }
 
-main().catch(console.error);
+main()
