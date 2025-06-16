@@ -1,0 +1,105 @@
+{
+  "pageObject": {
+    "className": "HomePage",
+    "locators": [
+      {
+        "name": "searchInput",
+        "elementType": "input",
+        "actions": [
+          "fill",
+          "clear"
+        ],
+        "selectors": [
+          {
+            "type": "getByRole",
+            "value": "textbox",
+            "options": {
+              "name": "Search For Products"
+            }
+          },
+          {
+            "type": "locator",
+            "value": "input[name='search']"
+          }
+        ],
+        "waitBefore": "visible",
+        "validateAfter": false
+      },
+      {
+        "name": "searchButton",
+        "elementType": "button",
+        "actions": [
+          "click"
+        ],
+        "selectors": [
+          {
+            "type": "locator",
+            "value": "[type='submit']"
+          }
+        ],
+        "waitBefore": "enabled",
+        "validateAfter": true
+      },
+      {
+        "name": "inStockFilter",
+        "elementType": "checkbox",
+        "actions": [
+          "check"
+        ],
+        "selectors": [
+          {
+            "type": "locator",
+            "value": "label[for='mz-fss-0--1']"
+          }
+        ],
+        "waitBefore": "visible"
+      }
+    ]
+  },
+  "testSteps": [
+    {
+      "action": "navigate",
+      "params": [
+        "/"
+      ],
+      "waitFor": {
+        "element": "searchInput",
+        "state": "visible"
+      }
+    },
+    {
+      "action": "fillSearchInput",
+      "params": [
+        "MacBook"
+      ],
+      "waitFor": {
+        "element": "searchInput",
+        "state": "visible"
+      }
+    },
+    {
+      "action": "clickSearchButton",
+      "params": [],
+      "waitFor": {
+        "element": "searchButton",
+        "state": "enabled"
+      },
+      "assert": {
+        "type": "urlContains",
+        "expected": "/search?q=MacBook"
+      }
+    },
+    {
+      "action": "waitForInStockFilterVisible",
+      "params": [],
+      "waitFor": {
+        "element": "inStockFilter",
+        "state": "visible"
+      }
+    },
+    {
+      "action": "checkInStockFilter",
+      "params": []
+    }
+  ]
+}

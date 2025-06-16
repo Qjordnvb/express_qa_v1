@@ -4,30 +4,47 @@
     "locators": [
       {
         "name": "emailInput",
+        "elementType": "input",
         "actions": [
-          "fill"
+          "fill",
+          "clear",
+          "getValue"
         ],
         "selectors": [
           {
             "type": "getByLabel",
             "value": "E-Mail Address"
+          },
+          {
+            "type": "css",
+            "value": "input[name='email']"
           }
-        ]
+        ],
+        "waitBefore": "visible",
+        "validateAfter": true
       },
       {
         "name": "passwordInput",
+        "elementType": "input",
         "actions": [
-          "fill"
+          "fill",
+          "clear"
         ],
         "selectors": [
           {
             "type": "getByLabel",
             "value": "Password"
+          },
+          {
+            "type": "css",
+            "value": "input[name='password']"
           }
-        ]
+        ],
+        "waitBefore": "visible"
       },
       {
         "name": "loginButton",
+        "elementType": "button",
         "actions": [
           "click"
         ],
@@ -38,38 +55,50 @@
             "options": {
               "name": "Login"
             }
+          },
+          {
+            "type": "css",
+            "value": "button[type='submit']"
           }
-        ]
+        ],
+        "waitBefore": "enabled",
+        "validateAfter": true
       },
       {
         "name": "errorMessage",
-        "actions": [
-          "textContent"
-        ],
+        "elementType": "text",
+        "actions": [],
         "selectors": [
           {
-            "type": "getByText",
-            "value": "Warning: No match for E-Mail Address and/or Password."
+            "type": "css",
+            "value": ".alert-danger"
           }
-        ]
+        ],
+        "waitBefore": "visible"
       }
     ]
   },
   "testSteps": [
     {
-      "action": "navigateToLoginPage",
-      "params": []
+      "action": "navigate",
+      "params": [
+        "/account/login"
+      ],
+      "waitFor": {
+        "element": "emailInput",
+        "state": "visible"
+      }
     },
     {
       "action": "fillEmailInput",
       "params": [
-        "invalidEmail@example.com"
+        "invalid@example.com"
       ]
     },
     {
       "action": "fillPasswordInput",
       "params": [
-        "wrongPassword"
+        "wrongPassword123"
       ]
     },
     {
@@ -77,8 +106,28 @@
       "params": []
     },
     {
-      "action": "getErrorMessage",
-      "params": []
+      "action": "waitForErrorMessageVisible",
+      "params": [],
+      "waitFor": {
+        "element": "errorMessage",
+        "state": "visible"
+      }
+    },
+    {
+      "action": "assertErrorMessageOneOf",
+      "params": [
+        [
+          "Warning: No match for E-Mail Address and/or Password.",
+          "Warning: Your account has exceeded allowed number of login attempts. Please try again in 1 hour."
+        ]
+      ],
+      "assert": {
+        "type": "oneOf",
+        "expectedOptions": [
+          "Warning: No match for E-Mail Address and/or Password.",
+          "Warning: Your account has exceeded allowed number of login attempts. Please try again in 1 hour."
+        ]
+      }
     }
   ]
 }

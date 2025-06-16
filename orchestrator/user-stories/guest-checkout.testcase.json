@@ -1,5 +1,6 @@
 {
-  "name": "Error user not register",
+  "name": "Login exitoso y redireccion al home",
   "path": "/index.php?route=account/login",
-  "userStory": "Como usuario intento hacer login pero no estoy registrado"
+  "userStory": "Como usuario quiero hacer login en el sitio web con mis credenciales email: jordanvillarreal1994@gmail.com, password: 12345678"
 }
+

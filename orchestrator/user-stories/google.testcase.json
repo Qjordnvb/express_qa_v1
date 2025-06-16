@@ -1,0 +1,5 @@
+{
+  "name": "Simple Google Search Test",
+  "path": "/",
+  "userStory": "Como un usuario de internet, quiero ir a la página de inicio de Google, dar clic en el span que contiene un texto de `No, gracias`, y luego escribir en el combobox 'Playwright', y hacer clic en el botón de `Buscar con google` para ver los resultados."
+}
