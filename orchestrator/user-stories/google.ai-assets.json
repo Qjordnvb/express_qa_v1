@@ -1,0 +1,118 @@
+{
+  "pageObject": {
+    "className": "GoogleHomePage",
+    "locators": [
+      {
+        "name": "noThanksButton",
+        "elementType": "button",
+        "actions": [
+          "click"
+        ],
+        "selectors": [
+          {
+            "type": "getByText",
+            "value": "No, gracias"
+          },
+          {
+            "type": "getByText",
+            "value": "No iniciar"
+          }
+        ],
+        "waitBefore": "visible",
+        "validateAfter": true,
+        "metadata": {
+          "confidence": 100,
+          "lastSuccess": "2025-06-16T02:40:54.794Z",
+          "enhanced": true
+        }
+      },
+      {
+        "name": "searchInput",
+        "elementType": "input",
+        "actions": [
+          "fill",
+          "clear"
+        ],
+        "selectors": [
+          {
+            "type": "getByRole",
+            "value": "combobox"
+          },
+          {
+            "type": "getByRole",
+            "value": "combobox"
+          }
+        ],
+        "waitBefore": "visible",
+        "validateAfter": true,
+        "metadata": {
+          "confidence": 100,
+          "lastSuccess": "2025-06-16T02:40:54.794Z",
+          "enhanced": true
+        }
+      },
+      {
+        "name": "searchButton",
+        "elementType": "button",
+        "actions": [
+          "click"
+        ],
+        "selectors": [
+          {
+            "type": "getByText",
+            "value": "Buscar con Google"
+          },
+          {
+            "type": "getByText",
+            "value": "Buscar con Google"
+          }
+        ],
+        "waitBefore": "enabled",
+        "validateAfter": true,
+        "metadata": {
+          "confidence": 100,
+          "lastSuccess": "2025-06-16T02:40:54.794Z",
+          "enhanced": true
+        }
+      }
+    ]
+  },
+  "testSteps": [
+    {
+      "action": "navigate",
+      "params": [
+        "https://www.google.com"
+      ]
+    },
+    {
+      "action": "waitForNoThanksButtonVisible",
+      "params": [],
+      "waitFor": {
+        "element": "noThanksButton",
+        "state": "visible"
+      }
+    },
+    {
+      "action": "clickNoThanksButton",
+      "params": []
+    },
+    {
+      "action": "waitForSearchInputVisible",
+      "params": [],
+      "waitFor": {
+        "element": "searchInput",
+        "state": "visible"
+      }
+    },
+    {
+      "action": "fillSearchInput",
+      "params": [
+        "Playwright"
+      ]
+    },
+    {
+      "action": "clickSearchButton",
+      "params": []
+    }
+  ]
+}

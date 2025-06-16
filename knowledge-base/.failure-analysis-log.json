@@ -1,0 +1,17 @@
+{
+  "tests/generated/login-page.spec.ts": [
+    {
+      "testName": "login-page.spec.ts",
+      "failureType": "timing",
+      "failedStep": "clickLoginButton",
+      "errorMessage": "Error: locator.click: Element is outside of the viewport\nCall log:\n\u001b[2m  - waiting for getByRole('button').first()\u001b[22m\n\u001b[2m    - locator resolved to <a role=\"button\" target=\"_self\" class=\"icon-right both btn btn-primary btn-lg btn-block\" href=\"https://ecommerce-playground.lambdatest.io/index.php?route=checkout/cart\">…</a>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    - scrolling into view if needed\u001b[22m\n\u001b[2m    - done scrolling\u001b[22m\n",
+      "suggestedFixes": [
+        {
+          "type": "wait",
+          "description": "El elemento no estaba visible. Añadir scrollIntoViewIfNeeded() antes de la acción.",
+          "confidence": 0.95
+        }
+      ]
+    }
+  ]
+}
