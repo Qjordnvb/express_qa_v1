@@ -21,7 +21,12 @@
           }
         ],
         "waitBefore": "visible",
-        "validateAfter": true
+        "validateAfter": true,
+        "metadata": {
+          "enhanced": true,
+          "confidence": 100,
+          "lastSuccess": "2025-06-24T20:59:50.695Z"
+        }
       },
       {
         "name": "passwordInput",
@@ -40,7 +45,12 @@
             "value": "input[name='password']"
           }
         ],
-        "waitBefore": "visible"
+        "waitBefore": "visible",
+        "metadata": {
+          "enhanced": true,
+          "confidence": 100,
+          "lastSuccess": "2025-06-24T20:59:50.695Z"
+        }
       },
       {
         "name": "loginButton",
@@ -57,12 +67,21 @@
             }
           },
           {
+            "type": "getByRole",
+            "value": "button"
+          },
+          {
             "type": "css",
             "value": "button[type='submit']"
           }
         ],
         "waitBefore": "enabled",
-        "validateAfter": true
+        "validateAfter": true,
+        "metadata": {
+          "enhanced": true,
+          "confidence": 75,
+          "lastSuccess": "2025-06-24T20:59:50.695Z"
+        }
       },
       {
         "name": "errorMessage",
@@ -74,7 +93,12 @@
             "value": ".alert-danger"
           }
         ],
-        "waitBefore": "visible"
+        "waitBefore": "visible",
+        "metadata": {
+          "enhanced": true,
+          "confidence": 100,
+          "lastSuccess": "2025-06-24T20:03:24.269Z"
+        }
       }
     ]
   },
@@ -82,7 +106,7 @@
     {
       "action": "navigate",
       "params": [
-        "/account/login"
+        "index.php?route=account/login"
       ],
       "waitFor": {
         "element": "emailInput",
@@ -93,7 +117,11 @@
       "action": "fillEmailInput",
       "params": [
         "invalid@example.com"
-      ]
+      ],
+      "waitFor": {
+        "element": "emailInput",
+        "state": "visible"
+      }
     },
     {
       "action": "fillPasswordInput",
