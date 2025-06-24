@@ -31,11 +31,19 @@ export class GoogleGeminiService implements ILlmService { // <-- CLASE QUE IMPLE
 
 
 
-  async getTestAssetsFromIA(userStory: string, imageBase64: string): Promise<any> {
+  async getTestAssetsFromIA(userStory: string, imageBase64: string, detectedPatterns: any[] = []): Promise<any> {
     console.log("Enviando historia de usuario e imagen a Google Gemini...");
+
+    const patternsContext = detectedPatterns.length > 0
+        ? `Adicionalmente, un análisis estructural de la página ha detectado los siguientes patrones de UI: ${JSON.stringify(detectedPatterns, null, 2)}. Usa este contexto para generar selectores y pasos más precisos y relevantes. Por ejemplo, si detectas un 'form', prioriza los selectores dentro de ese formulario.`
+        : '';
 
     // El prompt que ya perfeccionamos
     const prompt = `
+
+    CONTEXTO ESTRUCTURAL DE LA PÁGINA:
+   ${patternsContext}
+
    CONTEXTO:
    Eres "Visionary QA", un motor de generación de código para pruebas automatizadas con Playwright y TypeScript. Tu única función es analizar los datos de entrada y devolver un objeto JSON estructurado que será usado para generar código de pruebas robusto y mantenible.
 

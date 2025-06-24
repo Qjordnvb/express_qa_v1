@@ -1,6 +1,6 @@
 {
   "pageObject": {
-    "className": "HomePage",
+    "className": "SearchPage",
     "locators": [
       {
         "name": "searchInput",
@@ -18,12 +18,21 @@
             }
           },
           {
+            "type": "getByRole",
+            "value": "textbox"
+          },
+          {
             "type": "locator",
             "value": "input[name='search']"
           }
         ],
         "waitBefore": "visible",
-        "validateAfter": false
+        "validateAfter": false,
+        "metadata": {
+          "enhanced": true,
+          "confidence": 100,
+          "lastSuccess": "2025-06-24T20:09:24.755Z"
+        }
       },
       {
         "name": "searchButton",
@@ -34,11 +43,27 @@
         "selectors": [
           {
             "type": "locator",
+            "value": "button[type='submit']"
+          },
+          {
+            "type": "locator",
             "value": "[type='submit']"
+          },
+          {
+            "type": "getByRole",
+            "value": "button",
+            "options": {
+              "name": "SEARCH"
+            }
           }
         ],
         "waitBefore": "enabled",
-        "validateAfter": true
+        "validateAfter": true,
+        "metadata": {
+          "enhanced": true,
+          "confidence": 100,
+          "lastSuccess": "2025-06-24T20:09:24.755Z"
+        }
       },
       {
         "name": "inStockFilter",
@@ -52,7 +77,12 @@
             "value": "label[for='mz-fss-0--1']"
           }
         ],
-        "waitBefore": "visible"
+        "waitBefore": "visible",
+        "metadata": {
+          "enhanced": true,
+          "confidence": 100,
+          "lastSuccess": "2025-06-24T20:09:24.755Z"
+        }
       }
     ]
   },
@@ -86,7 +116,7 @@
       },
       "assert": {
         "type": "urlContains",
-        "expected": "/search?q=MacBook"
+        "expected": "?search=MacBook"
       }
     },
     {

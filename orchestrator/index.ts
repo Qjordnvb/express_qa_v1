@@ -1,24 +1,15 @@
 // orchestrator/index.ts
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 import * as fs from 'fs';
 import { execSync } from 'child_process';
-import { chromium, Page, Browser} from '@playwright/test';
+import { chromium, Page, Browser } from '@playwright/test';
 import { getLlmService } from './llm-service';
+import { LearningSystem } from './learning-system';
+import { FailureAnalyzer } from './failure-analyzer';
+import { UIPatternDetector } from './ui-pattern-detector';
 import playwrightConfig from '../playwright.config';
-
-const provider = process.env.LLM_PROVIDER || 'google';
-if (!provider) {
-    throw new Error('Error de Configuración: La variable LLM_PROVIDER no está definida en tu archivo .env');
-}
-if (provider.toLowerCase() === 'openai' && !process.env.OPENAI_API_KEY) {
-    throw new Error('Error de Configuración: Has seleccionado "openai" pero OPENAI_API_KEY no está definida en tu archivo .env');
-}
-if (provider.toLowerCase() === 'google' && !process.env.GOOGLE_API_KEY) {
-    throw new Error('Error de Configuración: Has seleccionado "google" pero GOOGLE_API_KEY no está definida en tu archivo .env');
-}
 
 interface TestCase {
   name: string;
@@ -26,97 +17,116 @@ interface TestCase {
   userStory: string;
 }
 
-async function main() {
-  console.log("🚀 Iniciando orquestador de pruebas con IA...");
+async function getOrGenerateAssets(testCase: TestCase, testCasePath: string, llmService: any): Promise<any> {
+    const fullDefinitionPath = testCasePath.replace('.testcase.json', '.ai-assets.json');
+    const baseURL = playwrightConfig.use?.baseURL;
+    if (!baseURL) throw new Error("baseURL no está definida en playwright.config.ts");
+    const fullUrl = new URL(testCase.path, baseURL).toString();
 
-  const testCasePath = process.argv[2];
-  if (!testCasePath) {
-    console.error("❌ Error: Proporciona la ruta al archivo .testcase.json");
-    console.error("Uso: npm run orchestrate -- <ruta/al/archivo.testcase.json>");
-    process.exit(1);
-  }
-
-  // 1. Leer el caso de prueba completo desde el archivo JSON
-  const testCase: TestCase = JSON.parse(fs.readFileSync(testCasePath, 'utf-8'));
-  console.log(`📋 Caso de prueba leído: "${testCase.name}"`);
-
-  // Extraemos la baseURL de la configuración de Playwright
-  const baseURL = playwrightConfig.use?.baseURL;
-  if (!baseURL) {
-    throw new Error("baseURL no está definida en playwright.config.ts");
-  }
-
-  const fullUrl = new URL(testCase.path, baseURL).toString();
-
-  const browser: Browser = await chromium.launch();
-
-  try {
-    // 2. Usar Playwright para navegar y tomar una captura de pantalla
-    const page: Page = await browser.newPage();
-
-    console.log(`📸 Navegando a ${fullUrl} para tomar una captura...`);
-    await page.goto(fullUrl, { waitUntil: 'networkidle' });
-
-    // Esperar un momento adicional para asegurar que todo esté cargado
-    await page.waitForTimeout(2000);
-
-    const screenshotBuffer = await page.screenshot();
-    console.log("✅ Captura de pantalla tomada.");
-
-    await page.close();
-
-    // 3. Llamar a la IA con la historia de usuario y la imagen (en base64)
-    const llmService = getLlmService();
-
-    console.log("🤖 Enviando datos a la IA para generar assets...");
-    const testAssets = await llmService.getTestAssetsFromIA(testCase.userStory, screenshotBuffer.toString('base64'));
-
-    if (!testAssets) {
-      throw new Error("La IA no pudo generar los assets de prueba");
+    if (fs.existsSync(fullDefinitionPath)) {
+        console.log(`[LOG] ℹ️ Usando archivo de assets existente: ${path.basename(fullDefinitionPath)}`);
+        return JSON.parse(fs.readFileSync(fullDefinitionPath, 'utf8'));
     }
 
-    const fullDefinitionPath = testCasePath.replace('.testcase.json', '.ai-assets.json');
-    fs.writeFileSync(fullDefinitionPath, JSON.stringify(testAssets, null, 2));
-    console.log(`💾 Activos completos guardados en: ${fullDefinitionPath}`);
+    console.log(`[LOG] 📝 No se encontró ${path.basename(fullDefinitionPath)}. Generando desde la IA...`);
+    const browser: Browser = await chromium.launch();
+    const page: Page = await browser.newPage();
+    const viewport = playwrightConfig.use?.viewport || { width: 1280, height: 720 };
+    await page.setViewportSize(viewport);
+    console.log(`[LOG] 📸 Navegando a ${fullUrl} para tomar captura y analizar patrones...`);
+    await page.goto(fullUrl, { waitUntil: 'networkidle' });
 
-    // 4. Generar el Page Object
-    console.log("\n⚙️ Generando Page Object...");
-    execSync(`npm run generate:pom -- ${fullDefinitionPath}`, { stdio: 'inherit' });
+    const patternDetector = new UIPatternDetector();
+    const detectedPatterns = await patternDetector.detectPatterns(page);
+    console.log(`[LOG] ✅ Patrones de UI detectados: ${detectedPatterns.map(p => p.type).join(', ') || 'Ninguno'}`);
 
-    // 5. Generar el archivo de Test (.spec.ts)
-    console.log("\n⚙️ Generando Archivo de Prueba...");
-    execSync(`npm run generate:spec -- ${fullDefinitionPath} ${testCasePath}`, { stdio: 'inherit' });
+    const screenshotBuffer = await page.screenshot({ fullPage: true });
+    await browser.close();
+    console.log("[LOG] ✅ Captura de pantalla tomada.");
 
-    // 6. Ejecutar el test recién creado
-    console.log("\n🧪 Ejecutando Prueba Generada...");
-    const testFileName = testAssets.pageObject.className.replace(/([A-Z])/g, '-$1').toLowerCase().slice(1);
-    const testFilePath = `tests/generated/${testFileName}.spec.ts`;
+    console.log("[LOG] 🤖 Enviando datos y contexto de UI a la IA...");
+    const testAssets = await llmService.getTestAssetsFromIA(testCase.userStory, screenshotBuffer.toString('base64'), detectedPatterns);
+    if (!testAssets) throw new Error("La IA no pudo generar los assets de prueba");
+
+    return testAssets;
+}
+
+async function main() {
+  console.log("🚀 Iniciando orquestador v11.0 (Logging en Tiempo Real)...");
+
+  const learningSystem = new LearningSystem();
+  const failureAnalyzer = new FailureAnalyzer();
+  const llmService = getLlmService();
+  const testCasePath = process.argv[2];
+  if (!testCasePath) { process.exit(1); }
+  const testCase: any = JSON.parse(fs.readFileSync(testCasePath, 'utf-8'));
+
+  const fullDefinitionPath = testCasePath.replace('.testcase.json', '.ai-assets.json');
+  let attempt = 0;
+  const maxRetries = 1;
+
+  while (attempt <= maxRetries) {
+    if (attempt > 0) console.log(`\n🔄 Reintentando prueba después de auto-reparación (Intento ${attempt + 1})...`);
+
+    let testAssets;
+    const fullUrl = new URL(testCase.path, playwrightConfig.use!.baseURL!).toString();
 
     try {
+      testAssets = await getOrGenerateAssets(testCase, testCasePath, llmService);
+      testAssets = learningSystem.enhanceAIAssets(testAssets, fullUrl);
+      fs.writeFileSync(fullDefinitionPath, JSON.stringify(testAssets, null, 2));
+      console.log("✨ Assets mejorados y guardados.");
+
+      console.log("\n⚙️ Generando código...");
+      execSync(`npm run generate:pom -- ${fullDefinitionPath}`, { stdio: 'inherit' });
+      execSync(`npm run generate:spec -- ${fullDefinitionPath} ${testCasePath}`, { stdio: 'inherit' });
+
+      const testFileName = testAssets.pageObject.className.replace(/([A-Z])/g, '-$1').toLowerCase().slice(1);
+      const testFilePath = `tests/generated/${testFileName}.spec.ts`;
+
+      // --- PASO 5: EJECUCIÓN DE LA PRUEBA (CON LOGS EN TIEMPO REAL) ---
+      console.log("\n🧪 Ejecutando prueba generada...");
       const testCommand = `npx playwright test ${testFilePath}`;
       console.log(`▶️ Ejecutando: ${testCommand}\n`);
       execSync(testCommand, { stdio: 'inherit' });
-      console.log("\n✅ ¡ÉXITO! La prueba generada por IA se ha ejecutado correctamente.");
-    } catch (testError) {
-      console.error("\n⚠️ La prueba falló. Revisa los siguientes archivos:");
-      console.log(`   - Assets IA: ${fullDefinitionPath}`);
-      console.log(`   - Page Object: pages/generated/${testAssets.pageObject.className}.ts`);
-      console.log(`   - Test Spec: ${testFilePath}`);
-      console.log("\n💡 Sugerencias:");
-      console.log("   1. Ejecuta la prueba con --headed para ver qué ocurre");
-      console.log("   2. Revisa y corrige los selectores en el archivo .ai-assets.json");
-      console.log("   3. Vuelve a ejecutar: npm run orchestrate -- " + testCasePath);
-    }
 
-  } catch (error) {
-    console.error("\n❌ Error en el orquestador:", error);
-    process.exit(1);
-  } finally {
-    await browser.close();
+      console.log("\n✅ ¡ÉXITO! La prueba generada por IA se ha ejecutado correctamente.");
+      await learningSystem.learnFromSuccess(testCase.name, testAssets, fullUrl);
+      break;
+
+    } catch (error: any) {
+      console.error("\n❌ La prueba falló. Iniciando análisis inteligente...");
+
+      // Si el primer intento falla, re-ejecutamos silenciosamente para capturar el reporte JSON.
+      const testFileName = testAssets?.pageObject?.className.replace(/([A-Z])/g, '-$1').toLowerCase().slice(1) || 'unknown-test';
+      const testFilePath = `tests/generated/${testFileName}.spec.ts`;
+      let playwrightReport = `Error ejecutando el test: ${error.message}`;
+
+      try {
+        console.log(`[LOG] 🤫 Re-ejecutando para obtener reporte de fallo detallado...`);
+        const reportCommand = `npx playwright test "${testFilePath}" --reporter=json`;
+        execSync(reportCommand, { stdio: 'pipe', encoding: 'utf8' });
+      } catch (reportError: any) {
+        playwrightReport = reportError.stdout?.toString() || reportError.toString();
+      }
+
+      const analysis = await failureAnalyzer.analyzeFailure(testFilePath, playwrightReport, fullDefinitionPath, fullUrl);
+
+      console.log('🔬 Análisis del Fallo:', JSON.stringify(analysis, null, 2));
+      await learningSystem.learnFromFailure(testCase.name, analysis, testAssets, fullUrl);
+
+      if (attempt < maxRetries) {
+        const fixed = await failureAnalyzer.applyFixes(analysis, fullDefinitionPath);
+        if (fixed) {
+          attempt++;
+          continue;
+        }
+      }
+
+      console.log("⚠️ La auto-reparación no fue posible o ya se intentó. El fallo persiste.");
+      process.exit(1);
+    }
   }
 }
 
-main().catch(error => {
-  console.error("Error fatal:", error);
-  process.exit(1);
-});
+main().catch(console.error);

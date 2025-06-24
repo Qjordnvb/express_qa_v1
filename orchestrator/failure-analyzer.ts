@@ -1,6 +1,8 @@
 // orchestrator/failure-analyzer.ts
 import * as fs from 'fs';
 import * as path from 'path';
+import { chromium } from '@playwright/test'; // <-- CONEXIÓN
+import { VisualAIHelper } from './visual-ai-helper'; // <-- CONEXIÓN
 
 interface FailureAnalysis {
   testName: string;
@@ -27,194 +29,195 @@ interface TestExecutionResult {
 export class FailureAnalyzer {
   private failureHistory: Map<string, FailureAnalysis[]> = new Map();
 
-  async analyzeFailure(
-    testPath: string,
-    rawResult: string, // <-- MEJORA: Recibe el string del stdout o error crudo
-    aiAssetsPath: string
-  ): Promise<FailureAnalysis> {
+  async analyzeFailure(testPath: string, rawResult: string, aiAssetsPath: string, pageUrl: string): Promise<any> {
     console.log('🔍 Analizando fallo de prueba...');
+    let analysis: any = {
+        testName: path.basename(testPath),
+        failureType: 'unknown',
+        failedStep: 'Unknown step',
+        errorMessage: rawResult,
+        suggestedFixes: []
+    };
 
-    let errorMessage = 'Error desconocido';
-    let failedStep = 'Unknown step';
-    let failureType: FailureAnalysis['failureType'] = 'unknown';
-
-    // <-- MEJORA: Lógica inteligente para parsear el reporte JSON de Playwright -->
     try {
-      const report = JSON.parse(rawResult);
-      // Navegamos la estructura del reporte JSON para encontrar el error
-      const testResult = report.suites?.[0]?.suites?.[0]?.specs?.[0]?.tests?.[0]?.results?.[0];
-      if (testResult && testResult.error) {
-        errorMessage = testResult.error.message;
-        const stack = testResult.error.stack || '';
-        failedStep = this.extractFailedStep(stack);
-        failureType = this.categorizeFailure(errorMessage);
-        console.log(`✅ Análisis exitoso del reporte de Playwright. Fallo en: ${failedStep}`);
-      } else {
-          console.warn('El reporte JSON no contenía un error claro. Se usará el error crudo.');
-          errorMessage = rawResult;
-          failedStep = this.extractFailedStep(rawResult);
-          failureType = this.categorizeFailure(rawResult);
-      }
-    } catch (e) {
-      // Si no es un JSON, es un error crudo. Lo usamos directamente.
-      console.warn('No se pudo parsear el resultado como JSON. Analizando como texto de error crudo.');
-      errorMessage = rawResult;
-      failedStep = this.extractFailedStep(rawResult);
-      failureType = this.categorizeFailure(rawResult);
+        const report = JSON.parse(rawResult);
+        const testResult = report.suites?.[0]?.suites?.[0]?.specs?.[0]?.tests?.[0]?.results?.[0];
+        if (testResult && testResult.error) {
+            analysis.errorMessage = testResult.error.message;
+            const stack = testResult.error.stack || '';
+            analysis.failedStep = this.extractFailedStep(stack, testPath);
+            analysis.failureType = this.categorizeFailure(analysis.errorMessage);
+        }
+    } catch (e) { /* Se queda con el error crudo */ }
+
+    // <-- MEJORA CLAVE: Re-clasificación inteligente del error -->
+    const stdout = rawResult;
+    if (stdout.includes("Selector encontró") && stdout.includes("elementos para")) {
+        console.log("⚠️ Detectada ambigüedad en el selector. Re-clasificando el fallo como 'selector'.");
+        analysis.failureType = 'selector';
     }
 
     const aiAssets = JSON.parse(fs.readFileSync(aiAssetsPath, 'utf8'));
-    const suggestedFixes = await this.generateSuggestedFixes(failureType, errorMessage, failedStep, aiAssets);
+        // Pasamos la URL al generador de sugerencias
+        analysis.suggestedFixes = await this.generateSuggestedFixes(analysis.failureType, analysis.errorMessage, analysis.failedStep, aiAssets, pageUrl);
+        return analysis;
+}
 
-    const analysis: FailureAnalysis = {
-      testName: path.basename(testPath),
-      failureType,
-      failedStep,
-      errorMessage,
-      suggestedFixes,
-    };
-
-    this.addToHistory(testPath, analysis);
-    return analysis;
-  }
-
-  private categorizeFailure(errorMessage: string): FailureAnalysis['failureType'] {
-    const lowerError = errorMessage.toLowerCase();
-
-    if (lowerError.includes('timeout') || lowerError.includes('waiting for')) {
-      return 'timing';
-    }
-    if (lowerError.includes('locator') || lowerError.includes('selector') || lowerError.includes('element not found')) {
-      return 'selector';
-    }
-    if (lowerError.includes('expect') || lowerError.includes('assertion')) {
-      return 'validation';
-    }
-    if (lowerError.includes('navigation') || lowerError.includes('goto')) {
-      return 'navigation';
-    }
-
-    return 'unknown';
-  }
+private categorizeFailure(errorMessage: string): any {
+  const lowerError = errorMessage.toLowerCase();
+  if (lowerError.includes('outside of the viewport')) return 'timing'; // Sigue siendo útil para el diagnóstico inicial
+  if (lowerError.includes('timeout') || lowerError.includes('waiting for')) return 'timing';
+  if (lowerError.includes('locator') || lowerError.includes('selector')) return 'selector';
+  if (lowerError.includes('expect') || lowerError.includes('assertion')) return 'validation';
+  return 'unknown';
+}
 
   // <-- MEJORA: Extracción de paso mucho más precisa desde el stack trace -->
-  private extractFailedStep(errorStack: string): string {
+  private extractFailedStep(errorStack: string, testFilePath: string): string {
     if (!errorStack) return 'Unknown step';
-    // Busca patrones como: at LoginPage.fillEmailInput (/path/to/project/pages/generated/LoginPage.ts:45:21)
-    const match = errorStack.match(/at \w+\.(\w+)\s/);
-    if (match && match[1]) {
-      return match[1];
+
+    // Busca la línea que invoca un método del PageObject desde el archivo de prueba
+    const testFileName = path.basename(testFilePath);
+    const regex = new RegExp(`at .*\\/${testFileName}:\\d+:\\d+`);
+    const stackLines = errorStack.split('\n');
+    const testLineIndex = stackLines.findIndex(line => regex.test(line));
+
+    if (testLineIndex > 0) {
+        // La línea anterior en el stack trace suele ser la llamada dentro del POM
+        const pomLine = stackLines[testLineIndex - 1];
+        const match = pomLine.match(/at \w+\.(\w+)/);
+        if (match && match[1]) {
+            return match[1];
+        }
     }
+
+    // Fallback si el patrón anterior no funciona
+    const fallbackMatch = errorStack.match(/await \w+\.(\w+)\(/);
+    if (fallbackMatch && fallbackMatch[1]) {
+      return fallbackMatch[1];
+    }
+
     return 'Unknown step';
   }
 
-  private async generateSuggestedFixes(
-    failureType: FailureAnalysis['failureType'],
-    errorMessage: string,
-    failedStep: string,
-    aiAssets: any
-  ): Promise<SuggestedFix[]> {
-    let fixes: SuggestedFix[] = [];
-    const lowerErrorMessage = errorMessage.toLowerCase();
-
-    // <-- MEJORA: Añadir lógica específica para errores de 'timing' y 'viewport' -->
-    if (failureType === 'timing' && lowerErrorMessage.includes('outside of the viewport')) {
-        fixes.push({
-            type: 'wait',
-            description: `El elemento no estaba visible. Añadir scrollIntoViewIfNeeded() antes de la acción.`,
-            confidence: 0.95
-        });
-    } else if (failureType === 'timing') {
-        fixes.push({
-            type: 'wait',
-            description: `Aumentar el timeout o añadir una espera explícita (ej. waitForLoadState).`,
-            confidence: 0.8
-        });
-    }
-    // <-- FIN DE LA MEJORA -->
-
+  private async generateSuggestedFixes(failureType: any, errorMessage: string, failedStep: string, aiAssets: any, pageUrl: string): Promise<any[]> {
     if (failureType === 'selector') {
-      const relatedLocator = aiAssets.pageObject.locators.find((loc: any) =>
-        failedStep.toLowerCase().includes(loc.name.toLowerCase())
-      );
-      if (relatedLocator) {
-          fixes.push({
-              type: 'selector',
-              description: `Sugerir un selector alternativo para '${relatedLocator.name}' usando data-testid`,
-              code: JSON.stringify({ type: "locator", value: `[data-testid='${relatedLocator.name}-test']` }),
-              confidence: 0.85
-          });
-      }
+        const locatorNameMatch = failedStep.match(/^(?:click|fill|waitFor|assert)(\w+)/i);
+        if (locatorNameMatch && locatorNameMatch[1]) {
+            const elementName = locatorNameMatch[1].charAt(0).toLowerCase() + locatorNameMatch[1].slice(1);
+            const locatorData = aiAssets.pageObject.locators.find((loc: any) => loc.name === elementName);
+            if (locatorData && locatorData.selectors.length > 1) {
+                return [{
+                    type: 'selector',
+                    description: `El selector principal es ambiguo. Intentar usar el siguiente selector de la lista: '${JSON.stringify(locatorData.selectors[1])}'`,
+                    code: JSON.stringify({ reorder: true }),
+                    confidence: 0.98
+                }];
+            }
+        }
     }
 
-    // Fallback genérico
-    if (fixes.length === 0) {
-      fixes.push({
-        type: 'retry',
-        description: 'Reintentar la prueba para descartar un fallo intermitente.',
-        confidence: 0.3
-      });
+    console.log("👁️ El selector falló. Intentando análisis visual como último recurso...");
+    try {
+        const browser = await chromium.launch();
+        const page = await browser.newPage();
+        await page.goto(pageUrl, { waitUntil: 'networkidle' });
+        const visualHelper = new VisualAIHelper(page);
+
+        const elementNameMatch = failedStep.match(/^(?:click|fill|waitFor|assert)(\w+)/i);
+        if (elementNameMatch && elementNameMatch[1]) {
+            const elementName = elementNameMatch[1];
+            const locatorInfo = aiAssets.pageObject.locators.find((l:any) => l.name.toLowerCase() === elementName.toLowerCase());
+            const description = locatorInfo ? `el ${locatorInfo.elementType} llamado ${elementName}` : `el elemento de la acción ${elementName}`;
+
+            const visualResult = await visualHelper.findElementVisually(description);
+
+            if (visualResult && visualResult.found && visualResult.confidence > 0.8 && visualResult.suggestedSelectors.length > 0) {
+                console.log(`✅ Visual AI encontró una posible corrección para "${elementName}"`);
+                await browser.close();
+                return [{
+                    type: 'selector',
+                    description: `Visual AI sugiere un nuevo selector basado en el análisis de la imagen.`,
+                    code: JSON.stringify({ newSelector: visualResult.suggestedSelectors[0] }),
+                    confidence: 0.9
+                }];
+            }
+        }
+        await browser.close();
+    } catch (e) {
+        console.error("❌ El análisis con Visual AI falló:", e);
     }
 
-    return fixes.sort((a, b) => b.confidence - a.confidence);
-  }
 
-  async applyFixes(
-    analysis: FailureAnalysis,
-    aiAssetsPath: string,
-    threshold: number = 0.8
-  ): Promise<boolean> {
-    console.log('🔧 Evaluando posibles correcciones automáticas...');
-    const highConfidenceFix = analysis.suggestedFixes.find(
-      (fix) => fix.confidence >= threshold && fix.type === 'selector' && fix.code
-    );
-    if (!highConfidenceFix) {
+    return [{ type: 'retry', description: 'Reintentar la prueba.', confidence: 0.3 }];
+}
+
+async applyFixes(analysis: any, aiAssetsPath: string): Promise<boolean> {
+  console.log('🔧 Evaluando posibles correcciones automáticas...');
+
+  // Busca la primera sugerencia de tipo 'selector' con alta confianza.
+  const fix = analysis.suggestedFixes.find((f: any) => f.confidence > 0.9 && f.type === 'selector');
+
+  if (!fix || !fix.code) {
       console.log('⚠️ No se encontraron correcciones de selector con suficiente confianza para aplicar.');
       return false;
-    }
-    const aiAssets = JSON.parse(fs.readFileSync(aiAssetsPath, 'utf8'));
-    let modified = false;
-    const locatorNameToFix = analysis.failedStep.replace(/^(click|fill|waitFor|assert)/i, '');
-    const locatorToFix = aiAssets.pageObject.locators.find((loc: any) =>
-      loc.name.toLowerCase() === locatorNameToFix.charAt(0).toLowerCase() + locatorNameToFix.slice(1).toLowerCase()
-    );
+  }
 
-    if (locatorToFix) {
-      console.log(`📌 Aplicando corrección para el elemento "${locatorToFix.name}": ${highConfidenceFix.description}`);
-      try {
-        const newSelector = JSON.parse(highConfidenceFix.code!);
-        const selectorExists = locatorToFix.selectors.some((s: any) => s.type === newSelector.type && s.value === newSelector.value);
-        if (!selectorExists) {
-          locatorToFix.selectors.unshift(newSelector);
-          modified = true;
-        } else {
-          console.log(`El selector sugerido ya existe para "${locatorToFix.name}". No se realizarán cambios.`);
-        }
-      } catch (e) {
-        console.error("Error al parsear o aplicar la sugerencia de código del selector:", e);
+  // Identifica el elemento a reparar a partir del nombre del paso fallido (ej. "clickLoginButton" -> "loginButton")
+  const locatorNameMatch = analysis.failedStep.match(/^(?:click|fill|waitFor|assert|check|select|clear|get|is)(\w+)/i);
+  if (!locatorNameMatch) {
+      console.log(`⚠️ No se pudo extraer el nombre del elemento desde el paso: "${analysis.failedStep}"`);
+      return false;
+  }
+
+  const elementName = locatorNameMatch[1].charAt(0).toLowerCase() + locatorNameMatch[1].slice(1);
+  const aiAssets = JSON.parse(fs.readFileSync(aiAssetsPath, 'utf8'));
+  const locatorToFix = aiAssets.pageObject.locators.find((loc: any) => loc.name === elementName);
+
+  if (!locatorToFix) {
+      console.log(`⚠️ No se pudo encontrar el locator llamado "${elementName}" en los assets.`);
+      return false;
+  }
+
+  const fixAction = JSON.parse(fix.code);
+
+  // ESTRATEGIA 1: Reordenar selectores si el primario fue ambiguo.
+  if (fixAction.reorder === true && locatorToFix.selectors.length > 1) {
+      console.log(`📌 Aplicando auto-reparación [REORDENAR] para "${elementName}": Promoviendo el segundo selector.`);
+
+      // Mueve el primer selector (el que falló) al final de la lista.
+      const failingSelector = locatorToFix.selectors.shift();
+      locatorToFix.selectors.push(failingSelector);
+
+      fs.writeFileSync(aiAssetsPath, JSON.stringify(aiAssets, null, 2));
+      console.log(`✅ Archivo de assets actualizado. El nuevo selector primario es: ${JSON.stringify(locatorToFix.selectors[0])}`);
+      return true;
+  }
+
+  // ESTRATEGIA 2: Añadir un nuevo selector, probablemente del análisis visual.
+  if (fixAction.newSelector) {
+      console.log(`📌 Aplicando auto-reparación [VISUAL/NUEVO] para "${elementName}": Añadiendo nuevo selector.`);
+      const newSelector = fixAction.newSelector;
+
+      // Evitar añadir un selector que ya existe.
+      const selectorExists = locatorToFix.selectors.some((s: any) =>
+        s.type === newSelector.type && s.value === newSelector.value
+      );
+
+      if (!selectorExists) {
+        // Añade el nuevo selector al principio, dándole máxima prioridad.
+        locatorToFix.selectors.unshift(newSelector);
+        fs.writeFileSync(aiAssetsPath, JSON.stringify(aiAssets, null, 2));
+        console.log(`✅ Archivo de assets actualizado. Se añadió un nuevo selector de alta prioridad: ${JSON.stringify(newSelector)}`);
+        return true;
+      } else {
+        console.log(`⚠️ El selector sugerido ya existía en la lista.`);
         return false;
       }
-    }
-    if (modified) {
-      fs.writeFileSync(aiAssetsPath, JSON.stringify(aiAssets, null, 2));
-      console.log(`✅ Archivo de assets (${path.basename(aiAssetsPath)}) actualizado con nuevo selector.`);
-    }
-    return modified;
   }
 
-  private addToHistory(testPath: string, analysis: FailureAnalysis): void {
-    if (!this.failureHistory.has(testPath)) {
-      this.failureHistory.set(testPath, []);
-    }
-    this.failureHistory.get(testPath)!.push(analysis);
+  console.log('⚠️ La acción de corrección sugerida no es reconocida.');
+  return false;
+}
 
-    // Persistencia (opcional, pero recomendada para el futuro)
-    const historyDir = path.resolve(__dirname, `../knowledge-base`);
-    if (!fs.existsSync(historyDir)) {
-      fs.mkdirSync(historyDir, { recursive: true });
-    }
-    const historyPath = path.join(historyDir, '.failure-analysis-log.json');
-    const allHistory = Object.fromEntries(this.failureHistory.entries());
-    fs.writeFileSync(historyPath, JSON.stringify(allHistory, null, 2));
-  }
 }

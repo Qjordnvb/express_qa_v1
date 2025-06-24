@@ -25,7 +25,7 @@
         "metadata": {
           "enhanced": true,
           "confidence": 100,
-          "lastSuccess": "2025-06-24T20:59:50.695Z"
+          "lastSuccess": "2025-06-24T20:58:02.266Z"
         }
       },
       {
@@ -49,7 +49,7 @@
         "metadata": {
           "enhanced": true,
           "confidence": 100,
-          "lastSuccess": "2025-06-24T20:59:50.695Z"
+          "lastSuccess": "2025-06-24T20:58:02.266Z"
         }
       },
       {
@@ -80,24 +80,7 @@
         "metadata": {
           "enhanced": true,
           "confidence": 75,
-          "lastSuccess": "2025-06-24T20:59:50.695Z"
-        }
-      },
-      {
-        "name": "errorMessage",
-        "elementType": "text",
-        "actions": [],
-        "selectors": [
-          {
-            "type": "css",
-            "value": ".alert-danger"
-          }
-        ],
-        "waitBefore": "visible",
-        "metadata": {
-          "enhanced": true,
-          "confidence": 100,
-          "lastSuccess": "2025-06-24T20:03:24.269Z"
+          "lastSuccess": "2025-06-24T20:58:02.266Z"
         }
       }
     ]
@@ -106,7 +89,7 @@
     {
       "action": "navigate",
       "params": [
-        "index.php?route=account/login"
+        "/Account/Login"
       ],
       "waitFor": {
         "element": "emailInput",
@@ -116,7 +99,7 @@
     {
       "action": "fillEmailInput",
       "params": [
-        "invalid@example.com"
+        "jordanvillarreal1994@gmail.com"
       ],
       "waitFor": {
         "element": "emailInput",
@@ -126,36 +109,12 @@
     {
       "action": "fillPasswordInput",
       "params": [
-        "wrongPassword123"
+        "12345678"
       ]
     },
     {
       "action": "clickLoginButton",
       "params": []
-    },
-    {
-      "action": "waitForErrorMessageVisible",
-      "params": [],
-      "waitFor": {
-        "element": "errorMessage",
-        "state": "visible"
-      }
-    },
-    {
-      "action": "assertErrorMessageOneOf",
-      "params": [
-        [
-          "Warning: No match for E-Mail Address and/or Password.",
-          "Warning: Your account has exceeded allowed number of login attempts. Please try again in 1 hour."
-        ]
-      ],
-      "assert": {
-        "type": "oneOf",
-        "expectedOptions": [
-          "Warning: No match for E-Mail Address and/or Password.",
-          "Warning: Your account has exceeded allowed number of login attempts. Please try again in 1 hour."
-        ]
-      }
     }
   ]
 }

@@ -1,55 +1,23 @@
 {
   "pageObject": {
-    "className": "GoogleHomePage",
+    "className": "GoogleSearchPage",
     "locators": [
-      {
-        "name": "noThanksButton",
-        "elementType": "button",
-        "actions": [
-          "click"
-        ],
-        "selectors": [
-          {
-            "type": "getByText",
-            "value": "No, gracias"
-          },
-          {
-            "type": "getByText",
-            "value": "No iniciar"
-          }
-        ],
-        "waitBefore": "visible",
-        "validateAfter": true,
-        "metadata": {
-          "confidence": 100,
-          "lastSuccess": "2025-06-16T02:40:54.794Z",
-          "enhanced": true
-        }
-      },
       {
         "name": "searchInput",
         "elementType": "input",
         "actions": [
           "fill",
-          "clear"
+          "clear",
+          "getValue"
         ],
         "selectors": [
           {
-            "type": "getByRole",
-            "value": "combobox"
-          },
-          {
-            "type": "getByRole",
-            "value": "combobox"
+            "type": "css",
+            "value": "[name=\"q\"]"
           }
         ],
         "waitBefore": "visible",
-        "validateAfter": true,
-        "metadata": {
-          "confidence": 100,
-          "lastSuccess": "2025-06-16T02:40:54.794Z",
-          "enhanced": true
-        }
+        "validateAfter": true
       },
       {
         "name": "searchButton",
@@ -59,21 +27,12 @@
         ],
         "selectors": [
           {
-            "type": "getByText",
-            "value": "Buscar con Google"
-          },
-          {
-            "type": "getByText",
-            "value": "Buscar con Google"
+            "type": "css",
+            "value": "[name=\"btnK\"]"
           }
         ],
         "waitBefore": "enabled",
-        "validateAfter": true,
-        "metadata": {
-          "confidence": 100,
-          "lastSuccess": "2025-06-16T02:40:54.794Z",
-          "enhanced": true
-        }
+        "validateAfter": true
       }
     ]
   },
@@ -81,24 +40,8 @@
     {
       "action": "navigate",
       "params": [
-        "https://www.google.com"
-      ]
-    },
-    {
-      "action": "waitForNoThanksButtonVisible",
-      "params": [],
-      "waitFor": {
-        "element": "noThanksButton",
-        "state": "visible"
-      }
-    },
-    {
-      "action": "clickNoThanksButton",
-      "params": []
-    },
-    {
-      "action": "waitForSearchInputVisible",
-      "params": [],
+        "https://www.google.com/"
+      ],
       "waitFor": {
         "element": "searchInput",
         "state": "visible"
@@ -108,11 +51,23 @@
       "action": "fillSearchInput",
       "params": [
         "Playwright"
-      ]
+      ],
+      "waitFor": {
+        "element": "searchInput",
+        "state": "visible"
+      }
     },
     {
       "action": "clickSearchButton",
-      "params": []
+      "params": [],
+      "waitFor": {
+        "element": "searchButton",
+        "state": "enabled"
+      },
+      "assert": {
+        "type": "urlContains",
+        "expected": "q=Playwright"
+      }
     }
   ]
 }
