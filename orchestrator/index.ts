@@ -54,14 +54,28 @@ async function getOrGenerateAssets(testCase: TestCase, testCasePath: string, llm
 async function main() {
   console.log("🚀 Iniciando orquestador v11.0 (Logging en Tiempo Real)...");
 
+    // --- 1. INICIALIZACIÓN ---
   const learningSystem = new LearningSystem();
   const failureAnalyzer = new FailureAnalyzer();
   const llmService = getLlmService();
   const testCasePath = process.argv[2];
-  if (!testCasePath) { process.exit(1); }
+  if (!testCasePath) { /* ... */ }
   const testCase: any = JSON.parse(fs.readFileSync(testCasePath, 'utf-8'));
+  console.log(`📋 Caso de prueba leído: "${testCase.name}"`);
 
-  const fullDefinitionPath = testCasePath.replace('.testcase.json', '.ai-assets.json');
+  // --- MEJORA: Centralización y Organización de Rutas ---
+  const storiesDir = path.dirname(testCasePath);
+  const testCaseName = path.basename(testCasePath, '.testcase.json');
+
+  // 1. Definimos la nueva carpeta para los assets generados
+  const assetsDir = path.join(storiesDir, '../generated-assets');
+  if (!fs.existsSync(assetsDir)) {
+    fs.mkdirSync(assetsDir, { recursive: true });
+    console.log(`[LOG] 🗂️ Carpeta creada: ${assetsDir}`);
+  }
+
+  // 2. La ruta del "plano" ahora apunta a la nueva carpeta
+  const fullDefinitionPath = path.join(assetsDir, `${testCaseName}.ai-assets.json`);
   let attempt = 0;
   const maxRetries = 1;
 
@@ -81,8 +95,19 @@ async function main() {
       execSync(`npm run generate:pom -- ${fullDefinitionPath}`, { stdio: 'inherit' });
       execSync(`npm run generate:spec -- ${fullDefinitionPath} ${testCasePath}`, { stdio: 'inherit' });
 
-      const testFileName = testAssets.pageObject.className.replace(/([A-Z])/g, '-$1').toLowerCase().slice(1);
+      // =======================================================================
+      // INICIO DE LA CORRECCIÓN CRÍTICA
+      // =======================================================================
+      // ANTES (Incorrecto): El nombre del archivo de prueba se basaba en la clase del Page Object.
+      // const testFileName = testAssets.pageObject.className.replace(/([A-Z])/g, '-$1').toLowerCase().slice(1);
+
+      // AHORA (Correcto): El nombre del archivo se deriva del nombre del CASO DE PRUEBA,
+      // sincronizándolo con la lógica de `generate-spec.ts`.
+      const testFileName = testCase.name.replace(/\s+/g, '-').toLowerCase();
       const testFilePath = `tests/generated/${testFileName}.spec.ts`;
+      // =======================================================================
+      // FIN DE LA CORRECCIÓN CRÍTICA
+      // =======================================================================
 
       // --- PASO 5: EJECUCIÓN DE LA PRUEBA (CON LOGS EN TIEMPO REAL) ---
       console.log("\n🧪 Ejecutando prueba generada...");
@@ -97,20 +122,25 @@ async function main() {
     } catch (error: any) {
       console.error("\n❌ La prueba falló. Iniciando análisis inteligente...");
 
-      // Si el primer intento falla, re-ejecutamos silenciosamente para capturar el reporte JSON.
-      const testFileName = testAssets?.pageObject?.className.replace(/([A-Z])/g, '-$1').toLowerCase().slice(1) || 'unknown-test';
-      const testFilePath = `tests/generated/${testFileName}.spec.ts`;
+      // =======================================================================
+      // CORRECCIÓN SECUNDARIA PARA ANÁLISIS DE FALLOS
+      // =======================================================================
+      // Usar la misma lógica de nomenclatura para asegurar que se analiza el archivo correcto.
+      const testFileNameForAnalysis = testCase.name.replace(/\s+/g, '-').toLowerCase();
+      const testFilePathForAnalysis = `tests/generated/${testFileNameForAnalysis}.spec.ts`;
+      // =======================================================================
+
       let playwrightReport = `Error ejecutando el test: ${error.message}`;
 
       try {
         console.log(`[LOG] 🤫 Re-ejecutando para obtener reporte de fallo detallado...`);
-        const reportCommand = `npx playwright test "${testFilePath}" --reporter=json`;
+        const reportCommand = `npx playwright test "${testFilePathForAnalysis}" --reporter=json`;
         execSync(reportCommand, { stdio: 'pipe', encoding: 'utf8' });
       } catch (reportError: any) {
         playwrightReport = reportError.stdout?.toString() || reportError.toString();
       }
 
-      const analysis = await failureAnalyzer.analyzeFailure(testFilePath, playwrightReport, fullDefinitionPath, fullUrl);
+      const analysis = await failureAnalyzer.analyzeFailure(testFilePathForAnalysis, playwrightReport, fullDefinitionPath, fullUrl);
 
       console.log('🔬 Análisis del Fallo:', JSON.stringify(analysis, null, 2));
       await learningSystem.learnFromFailure(testCase.name, analysis, testAssets, fullUrl);

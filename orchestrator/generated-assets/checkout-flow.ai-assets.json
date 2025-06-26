@@ -1,21 +1,17 @@
 {
   "pageObject": {
-    "className": "SearchPage",
+    "className": "HomePage",
     "locators": [
       {
         "name": "searchInput",
         "elementType": "input",
         "actions": [
-          "fill",
-          "clear"
+          "fill"
         ],
         "selectors": [
           {
             "type": "getByRole",
-            "value": "textbox",
-            "options": {
-              "name": "Search For Products"
-            }
+            "value": "textbox{\"name\":\"Search For Products\"}"
           },
           {
             "type": "getByRole",
@@ -24,14 +20,21 @@
           {
             "type": "locator",
             "value": "input[name='search']"
+          },
+          {
+            "type": "css",
+            "value": "[name='search']"
+          },
+          {
+            "type": "getByPlaceholder",
+            "value": "Search For Products"
           }
         ],
         "waitBefore": "visible",
-        "validateAfter": false,
         "metadata": {
           "enhanced": true,
           "confidence": 100,
-          "lastSuccess": "2025-06-24T20:09:24.755Z"
+          "lastSuccess": "2025-06-26T03:24:37.511Z"
         }
       },
       {
@@ -50,6 +53,10 @@
             "value": "[type='submit']"
           },
           {
+            "type": "css",
+            "value": "[type='submit']"
+          },
+          {
             "type": "getByRole",
             "value": "button",
             "options": {
@@ -62,7 +69,7 @@
         "metadata": {
           "enhanced": true,
           "confidence": 100,
-          "lastSuccess": "2025-06-24T20:09:24.755Z"
+          "lastSuccess": "2025-06-26T03:24:37.511Z"
         }
       },
       {
@@ -75,19 +82,55 @@
           {
             "type": "locator",
             "value": "label[for='mz-fss-0--1']"
+          },
+          {
+            "type": "getByLabel",
+            "value": "In Stock"
           }
         ],
         "waitBefore": "visible",
         "metadata": {
           "enhanced": true,
           "confidence": 100,
-          "lastSuccess": "2025-06-24T20:09:24.755Z"
+          "lastSuccess": "2025-06-26T03:24:37.511Z"
         }
+      },
+      {
+        "name": "productListItem",
+        "elementType": "list",
+        "actions": [],
+        "selectors": [
+          {
+            "type": "css",
+            "value": "ul li"
+          }
+        ],
+        "waitBefore": "visible"
       }
     ]
   },
+  "additionalPageObjects": [
+    {
+      "className": "SearchResultsPage",
+      "locators": [
+        {
+          "name": "productTitle",
+          "elementType": "text",
+          "actions": [],
+          "selectors": [
+            {
+              "type": "css",
+              "value": "h1.product-title"
+            }
+          ],
+          "waitBefore": "visible"
+        }
+      ]
+    }
+  ],
   "testSteps": [
     {
+      "page": "HomePage",
       "action": "navigate",
       "params": [
         "/"
@@ -98,6 +141,7 @@
       }
     },
     {
+      "page": "HomePage",
       "action": "fillSearchInput",
       "params": [
         "MacBook"
@@ -108,28 +152,35 @@
       }
     },
     {
+      "page": "HomePage",
       "action": "clickSearchButton",
       "params": [],
       "waitFor": {
-        "element": "searchButton",
-        "state": "enabled"
+        "element": "productListItem",
+        "state": "visible"
       },
       "assert": {
         "type": "urlContains",
-        "expected": "?search=MacBook"
+        "expected": "search=MacBook"
       }
     },
     {
-      "action": "waitForInStockFilterVisible",
+      "page": "SearchResultsPage",
+      "action": "waitForProductTitleVisible",
       "params": [],
       "waitFor": {
-        "element": "inStockFilter",
+        "element": "productTitle",
         "state": "visible"
       }
     },
     {
+      "page": "SearchResultsPage",
       "action": "checkInStockFilter",
-      "params": []
+      "params": [],
+      "waitFor": {
+        "element": "productListItem",
+        "state": "visible"
+      }
     }
   ]
 }

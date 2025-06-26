@@ -1,5 +1,11 @@
 {
   "name": "Search and Filter Flow",
   "path": "/index.php?route=common/home",
-  "userStory": "Como un cliente, quiero ir a la página de inicio, buscar 'MacBook', y en la página de resultados, quiero aplicar el filtro de 'In Stock' para este filtro puedes usar para ver solo los productos disponibles. Puedes usar los siguientes selectores getByRole('textbox', { name: 'Search For Products' }) locator para el boton de busqueda input[name='search']. Se debe tener en cuenta que el elemento de 'In Stock' puede estar asociado a este valor label[for='mz-fss-0--1']"
+  "userStory": [
+    "DADO que estoy en la página de inicio",
+    "CUANDO busco el producto 'MacBook'",
+    "Y hago clic en el botón de búsqueda",
+    "Y hago clic en el filtro de casilla de verificación con el texto 'In Stock'",
+    "ENTONCES la lista de productos debe actualizarse"
+  ]
 }

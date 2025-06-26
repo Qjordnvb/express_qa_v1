@@ -39,7 +39,7 @@ export class VisualAIHelper {
     `;
 
     const result = await this.llmService.getTestAssetsFromIA(
-      prompt,
+      [prompt],
       screenshot.toString('base64')
     );
 
@@ -72,7 +72,7 @@ export class VisualAIHelper {
     `;
 
     const result = await this.llmService.getTestAssetsFromIA(
-      prompt,
+      [prompt],
       screenshot.toString('base64')
     );
 
@@ -111,7 +111,7 @@ export class VisualAIHelper {
     `;
 
     const result = await this.llmService.getTestAssetsFromIA(
-      prompt,
+      [prompt],
       currentScreenshot.toString('base64')
     );
 

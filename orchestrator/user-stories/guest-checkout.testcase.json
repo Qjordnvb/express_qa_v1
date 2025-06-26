@@ -1,6 +1,11 @@
 {
   "name": "Login exitoso y redireccion al home",
   "path": "/index.php?route=account/login",
-  "userStory": "Como usuario quiero hacer login en el sitio web con mis credenciales email: jordanvillarreal1994@gmail.com, password: 12345678"
+  "userStory": [
+    "DADO que estoy en la página de login",
+    "CUANDO ingreso mi email 'jordanvillarreal1994@gmail.com'",
+    "Y ingreso mi password '12345678'",
+    "Y hago clic en el botón 'Login'",
+    "ENTONCES debo ser redirigido a la página de mi cuenta"
+  ]
 }
-
