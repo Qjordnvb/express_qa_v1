@@ -1,5 +1,11 @@
 {
   "name": "Simple Google Search Test",
   "path": "/",
-  "userStory": "Como un usuario de internet, quiero ir a la página de inicio de Google, luego, escribir en el combobox 'Playwright', y hacer clic en el botón de `Buscar con google` para ver los resultados."
+  "userStory": [
+    "DADO que estoy en la página de inicio de Google",
+    "CUANDO hago clic en el botón 'No, gracias'",
+    "Y escribo 'Playwright' en el campo de búsqueda",
+    "Y hago clic en el botón 'Buscar con Google'",
+    "ENTONCES debo ver la página de resultados para 'Playwright'"
+  ]
 }

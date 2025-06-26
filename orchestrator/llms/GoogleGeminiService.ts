@@ -3,7 +3,7 @@ import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/ge
 import { ILlmService } from './ILlmService'; // <-- AÑADIDO
 
 const generationConfig = {
-  temperature: 0.2, // Hacemos a la IA menos "creativa" para que siga el formato
+  temperature: 0.05, // Hacemos a la IA menos "creativa" para que siga el formato
   topK: 1,
   topP: 1,
   maxOutputTokens: 8192,
@@ -26,13 +26,15 @@ export class GoogleGeminiService implements ILlmService { // <-- CLASE QUE IMPLE
     if (!apiKey) { throw new Error("La variable de entorno GOOGLE_API_KEY no está definida."); }
     const genAI = new GoogleGenerativeAI(apiKey);
     console.log('apiKey',apiKey)
-    this.model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    this.model = genAI.getGenerativeModel({ model: "gemini-1.5-flash"  });
   }
 
 
 
-  async getTestAssetsFromIA(userStory: string, imageBase64: string, detectedPatterns: any[] = []): Promise<any> {
-    console.log("Enviando historia de usuario e imagen a Google Gemini...");
+  async getTestAssetsFromIA(userStory: string[], imageBase64: string, detectedPatterns: any[] = []): Promise<any> {
+    console.log("Enviando historia de usuario estructurada (Gherkin), imagen y contexto de UI a Google Gemini...");
+
+    const userStoryAsString = userStory.join('\n');
 
     const patternsContext = detectedPatterns.length > 0
         ? `Adicionalmente, un análisis estructural de la página ha detectado los siguientes patrones de UI: ${JSON.stringify(detectedPatterns, null, 2)}. Usa este contexto para generar selectores y pasos más precisos y relevantes. Por ejemplo, si detectas un 'form', prioriza los selectores dentro de ese formulario.`
@@ -48,7 +50,7 @@ export class GoogleGeminiService implements ILlmService { // <-- CLASE QUE IMPLE
    Eres "Visionary QA", un motor de generación de código para pruebas automatizadas con Playwright y TypeScript. Tu única función es analizar los datos de entrada y devolver un objeto JSON estructurado que será usado para generar código de pruebas robusto y mantenible.
 
    HISTORIA DE USUARIO:
-   "${userStory}"
+   "${userStoryAsString}"
 
    TAREA:
    Analiza la IMAGEN ADJUNTA y la HISTORIA DE USUARIO. Basado en ellas, genera un único objeto JSON que tenga exactamente las siguientes dos propiedades de nivel superior: "pageObject" y "testSteps".
@@ -63,7 +65,15 @@ export class GoogleGeminiService implements ILlmService { // <-- CLASE QUE IMPLE
         - "waitBefore": (OPCIONAL) Estado a esperar antes de interactuar ("visible", "enabled", "stable")
         - "validateAfter": (OPCIONAL) Boolean indicando si validar después de la acción
 
-   2. **testSteps**: Array de objetos donde cada paso DEBE:
+   2. **additionalPageObjects** (OPCIONAL, SOLO PARA FLUJOS MULTI-PÁGINA):
+       * Si la historia de usuario implica navegar a OTRA página (ej. de la home a resultados de búsqueda), define las páginas subsecuentes aquí.
+       * Es un ARRAY de objetos, donde cada objeto tiene la misma estructura que "pageObject".
+
+
+   3. **testSteps**: Un Array de objetos que describe CADA PASO del flujo completo:
+
+    --- REQUISITOS ESTRICTOS PARA CADA PASO EN "testSteps" ---
+    CADA objeto dentro del array "testSteps" DEBE OBLIGATORIAMENTE contener las siguientes propiedades:
       * Usar la convención ACCIÓN + ELEMENTO para el campo "action"
       * Incluir "params" como array (vacío si no hay parámetros)
       * Incluir "waitFor" cuando el elemento pueda no estar disponible inmediatamente
@@ -116,6 +126,9 @@ export class GoogleGeminiService implements ILlmService { // <-- CLASE QUE IMPLE
    - No incluyas explicaciones, solo el JSON
    - Para elementos sin acciones directas, genera los pasos apropiados de espera/aserción
    - Analiza estrictamente las historias de usuario para saber que incluir y que no incluir en el json, hay elementos que no aplican para todos los casos, ejemplo: los mensajes de error.
+   - La propiedad "page" en cada "testStep" es OBLIGATORIA y debe apuntar a un "className" definido.
+    - Si el flujo es de una sola página, el array "additionalPageObjects" debe ser omitido.
+    - Analiza la historia de usuario para determinar si se necesitan múltiples páginas. Una acción como "buscar" o "hacer clic en un enlace de producto" generalmente implica una transición de página.
 
    EJEMPLO COMPLETO:
    {
@@ -213,6 +226,75 @@ export class GoogleGeminiService implements ILlmService { // <-- CLASE QUE IMPLE
       }
      ]
    }
+
+   EJEMPLO DE FLUJO MULTI-PÁGINA (Home -> SearchResults):
+    {
+      "pageObject": {
+        "className": "HomePage",
+        "locators": [
+          {
+            "name": "searchInput",
+            "elementType": "input",
+            "actions": ["fill"],
+            "selectors": [{ "type": "getByPlaceholder", "value": "Search" }]
+          },
+          {
+            "name": "searchButton",
+            "elementType": "button",
+            "actions": ["click"],
+            "selectors": [{ "type": "locator", "value": "#search button" }]
+          }
+        ]
+      },
+      "additionalPageObjects": [
+        {
+          "className": "SearchResultsPage",
+          "locators": [
+            {
+              "name": "inStockFilter",
+              "elementType": "checkbox",
+              "actions": ["check"],
+              "selectors": [{ "type": "getByLabel", "value": "In Stock" }]
+            },
+            {
+                "name": "productTitle",
+                "elementType": "text",
+                "actions": [],
+                "selectors": [{ "type": "locator", "value": "h1.product-title" }]
+            }
+          ]
+        }
+      ],
+      "testSteps": [
+        {
+          "page": "HomePage",
+          "action": "navigate",
+          "params": ["index.php?route=common/home"]
+        },
+        {
+          "page": "HomePage",
+          "action": "fillSearchInput",
+          "params": ["MacBook"],
+          "waitFor": { "element": "searchInput", "state": "visible" }
+        },
+        {
+          "page": "HomePage",
+          "action": "clickSearchButton",
+          "params": []
+        },
+        {
+          "page": "SearchResultsPage",
+          "action": "waitForProductTitleVisible",
+          "params": [],
+          "assert": { "type": "urlContains", "expected": "search=MacBook" }
+        },
+        {
+          "page": "SearchResultsPage",
+          "action": "checkInStockFilter",
+          "params": []
+        }
+      ]
+    }
 
    IMPORTANTE:
    - Analiza cuidadosamente la imagen para identificar TODOS los elementos relevantes

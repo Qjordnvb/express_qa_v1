@@ -13,16 +13,25 @@ export class AnthropicClaudeService implements ILlmService {
     this.anthropic = new Anthropic({ apiKey });
   }
 
-  async getTestAssetsFromIA(userStory: string, imageBase64: string): Promise<any> {
-    console.log("Enviando historia de usuario e imagen a Anthropic Claude...");
+  async getTestAssetsFromIA(userStory: string[], imageBase64: string, detectedPatterns: any[] = []): Promise<any> {
+    console.log("Enviando historia de usuario estructurada (Gherkin), imagen y contexto de UI a Google Gemini...");
+
+    const userStoryAsString = userStory.join('\n');
+
+    const patternsContext = detectedPatterns.length > 0
+        ? `Adicionalmente, un análisis estructural de la página ha detectado los siguientes patrones de UI: ${JSON.stringify(detectedPatterns, null, 2)}. Usa este contexto para generar selectores y pasos más precisos y relevantes. Por ejemplo, si detectas un 'form', prioriza los selectores dentro de ese formulario.`
+        : '';
 
     // El prompt es el mismo, ya que define el formato de salida que queremos.
     const prompt = `
-    CONTEXTO:
-    Eres "Visionary QA", un motor de generación de código para pruebas automatizadas con Playwright y TypeScript. Tu única función es analizar los datos de entrada y devolver un objeto JSON estructurado.
+    CONTEXTO ESTRUCTURAL DE LA PÁGINA:
+   ${patternsContext}
 
-    HISTORIA DE USUARIO:
-    "${userStory}"
+   CONTEXTO:
+   Eres "Visionary QA", un motor de generación de código para pruebas automatizadas con Playwright y TypeScript. Tu única función es analizar los datos de entrada y devolver un objeto JSON estructurado que será usado para generar código de pruebas robusto y mantenible.
+
+   HISTORIA DE USUARIO:
+   "${userStoryAsString}"
 
     TAREA:
     Analiza la IMAGEN ADJUNTA y la HISTORIA DE USUARIO. Basado en ellas, genera un único objeto JSON que tenga exactamente las siguientes dos propiedades de nivel superior: "pageObject" y "testSteps".
