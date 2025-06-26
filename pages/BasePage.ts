@@ -1,55 +1,177 @@
 // pages/BasePage.ts
-
 import { type Page, type Locator } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export class BasePage {
-  protected readonly page: Page;
+  private actionLog: any[] = [];
 
-  constructor(page: Page) {
-    this.page = page;
-  }
+  constructor(protected page: Page) {}
 
+  /**
+   * Navega a una ruta específica
+   */
   async navigate(path: string): Promise<void> {
+    this.log('navigate', { path });
     await this.page.goto(path);
+    await this.page.waitForLoadState('networkidle');
   }
 
   /**
-   * Intenta localizar un elemento probando una lista de diferentes Locators en orden.
-   * Devuelve el primer localizador que encuentra un elemento visible.
-   * @param {Locator[]} locators - Un array de objetos Locator para probar.
-   * @param {string} description - Una descripción del elemento para los mensajes de error.
-   * @returns {Promise<Locator>} Una promesa que se resuelve con el primer localizador válido encontrado.
-   * @throws {Error} Si ningún localizador encuentra un elemento visible.
+   * Encuentra un elemento de forma inteligente probando múltiples selectores
    */
   async findSmartly(locators: Locator[], description: string): Promise<Locator> {
-    for (const locator of locators) {
+    const startTime = Date.now();
+    const attempts: any[] = [];
+
+    for (let i = 0; i < locators.length; i++) {
+      const locator = locators[i];
       try {
-        await locator.waitFor({ state: 'visible', timeout: 2000 });
-        console.log(`Elemento '${description}' encontrado.`);
-        return locator;
-      } catch (error) {
-        // Silenciosamente intenta con el siguiente localizador.
+        const count = await locator.count();
+        attempts.push({
+          index: i,
+          selector: locator.toString(),
+          count,
+          success: count > 0
+        });
+
+        if (count > 0) {
+          const duration = Date.now() - startTime;
+          this.log('findElement', {
+            description,
+            selectorIndex: i,
+            totalSelectors: locators.length,
+            duration,
+            found: true
+          });
+
+          if (count > 1) {
+            console.warn(`⚠️ Selector encontró ${count} elementos para ${description}. Usando el primero.`);
+          }
+          return locator.first();
+        }
+      } catch (e: any) {
+        attempts.push({
+          index: i,
+          selector: locator.toString(),
+          error: e.message
+        });
+        continue;
       }
     }
-    // Si el bucle termina, es porque ningún localizador funcionó.
-    throw new Error(`No se pudo encontrar el elemento '${description}' con ninguna de las opciones de localizador proporcionadas.`);
-  }
 
-  async handleCookieBannerIfNeeded(): Promise<void> {
-    // Usamos una expresión regular para encontrar botones con texto como "Accept", "Agree", "OK", "Aceptar", etc.
-    const acceptButton = this.page.getByRole('button', { name: /Accept|Agree|OK|Aceptar|Entendido/i });
+    // Si ningún selector funcionó, guardar información de debug
+    this.log('findElementFailed', {
+      description,
+      attempts,
+      duration: Date.now() - startTime
+    });
 
+    // Intentar esperar por el primero
+    console.log(`🔄 Ningún selector inmediato funcionó para ${description}. Esperando...`);
     try {
-      // Esperamos un tiempo corto (ej. 3 segundos). Si no aparece, no hacemos nada.
-      await acceptButton.waitFor({ state: 'visible', timeout: 3000 });
-      console.log('Banner de cookies detectado. Aceptando...');
-      await acceptButton.click();
-    } catch (error) {
-      // El banner no apareció, lo cual está bien. El test continúa.
-      console.log('No se detectó banner de cookies.');
+      await locators[0].waitFor({ state: 'visible', timeout: 5000 });
+      return locators[0];
+    } catch (e) {
+      // Guardar información detallada del fallo
+      await this.saveDebugInfo(description, attempts);
+      throw new Error(`No se pudo encontrar el elemento: ${description}. Probados ${locators.length} selectores.`);
     }
   }
 
+  /**
+   * Guarda información de debug cuando falla un elemento
+   */
+  private async saveDebugInfo(description: string, attempts: any[]): Promise<void> {
+    const debugDir = 'test-results/debug';
+    if (!fs.existsSync(debugDir)) {
+      fs.mkdirSync(debugDir, { recursive: true });
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const debugFile = path.join(debugDir, `${description}-${timestamp}.json`);
+
+    const debugInfo = {
+      description,
+      timestamp: new Date().toISOString(),
+      url: this.page.url(),
+      attempts,
+      actionLog: this.actionLog,
+      // Capturar el HTML actual para análisis
+      htmlSnippet: await this.page.evaluate(() => {
+        const body = document.body;
+        return body ? body.innerHTML.substring(0, 1000) : 'No body found';
+      })
+    };
+
+    fs.writeFileSync(debugFile, JSON.stringify(debugInfo, null, 2));
+    console.log(`💾 Debug info guardada en: ${debugFile}`);
+  }
+
+  /**
+   * Registra todas las acciones para debugging
+   */
+  private log(action: string, details: any): void {
+    this.actionLog.push({
+      action,
+      details,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  /**
+   * Espera a que la página esté lista
+   */
+  async waitForPageReady(): Promise<void> {
+    await this.page.waitForLoadState('domcontentloaded');
+    await this.page.waitForLoadState('networkidle');
+  }
+
+  /**
+   * Toma una captura de pantalla para debugging
+   */
+  async takeScreenshot(name: string): Promise<void> {
+    await this.page.screenshot({
+      path: `test-results/${name}-${Date.now()}.png`,
+      fullPage: true
+    });
+  }
+
+  /**
+   * Maneja popups o modales que puedan aparecer
+   */
+  async handlePopups(): Promise<void> {
+    const popupSelectors = [
+      '[aria-label="Close"]',
+      'button:has-text("Close")',
+      'button:has-text("Accept")',
+      'button:has-text("OK")',
+      'button:has-text("Aceptar")',
+      '.close-button',
+      '[class*="close"]',
+      '[class*="dismiss"]'
+    ];
+
+    for (const selector of popupSelectors) {
+      try {
+        const popup = this.page.locator(selector).first();
+        if (await popup.isVisible()) {
+          await popup.click();
+          await this.page.waitForTimeout(500);
+          console.log(`✅ Popup cerrado usando: ${selector}`);
+          this.log('popupClosed', { selector });
+          break;
+        }
+      } catch (e) {
+        // Continuar si no se encuentra
+      }
+    }
+  }
+
+  /**
+   * Obtiene el log de acciones para análisis
+   */
+  getActionLog(): any[] {
+    return this.actionLog;
+  }
 }
-
-

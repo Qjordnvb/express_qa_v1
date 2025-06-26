@@ -1,0 +1,223 @@
+{
+  "https://google.com/-noThanksButton": {
+    "url": "https://google.com/",
+    "elementDescription": "noThanksButton",
+    "workingSelectors": [
+      "getByText:No, gracias"
+    ],
+    "failedSelectors": [],
+    "lastUpdated": "2025-06-16T02:40:54.794Z",
+    "successRate": 100
+  },
+  "https://google.com/-searchInput": {
+    "url": "https://google.com/",
+    "elementDescription": "searchInput",
+    "workingSelectors": [
+      "getByRole:combobox"
+    ],
+    "failedSelectors": [],
+    "lastUpdated": "2025-06-16T02:40:54.794Z",
+    "successRate": 100
+  },
+  "https://google.com/-searchButton": {
+    "url": "https://google.com/",
+    "elementDescription": "searchButton",
+    "workingSelectors": [
+      "getByText:Buscar con Google"
+    ],
+    "failedSelectors": [],
+    "lastUpdated": "2025-06-16T02:40:54.794Z",
+    "successRate": 100
+  },
+  "https://ecommerce-playground.lambdatest.io/index.php?route=account/login-emailInput": {
+    "url": "https://ecommerce-playground.lambdatest.io/index.php?route=account/login",
+    "elementDescription": "emailInput",
+    "workingSelectors": [
+      "getByLabel:E-Mail Address",
+      "css:input[name='email']"
+    ],
+    "failedSelectors": [],
+    "lastUpdated": "2025-06-26T03:06:44.092Z",
+    "successRate": 100
+  },
+  "https://ecommerce-playground.lambdatest.io/index.php?route=account/login-passwordInput": {
+    "url": "https://ecommerce-playground.lambdatest.io/index.php?route=account/login",
+    "elementDescription": "passwordInput",
+    "workingSelectors": [
+      "getByLabel:Password",
+      "css:input[name='password']"
+    ],
+    "failedSelectors": [],
+    "lastUpdated": "2025-06-26T03:06:44.092Z",
+    "successRate": 100
+  },
+  "https://ecommerce-playground.lambdatest.io/index.php?route=account/login-loginButton": {
+    "url": "https://ecommerce-playground.lambdatest.io/index.php?route=account/login",
+    "elementDescription": "loginButton",
+    "workingSelectors": [
+      "getByRole:button{\"name\":\"Login\"}",
+      "getByRole:button",
+      "css:button[type='submit']"
+    ],
+    "failedSelectors": [
+      "getByRole:button"
+    ],
+    "lastUpdated": "2025-06-26T03:06:44.092Z",
+    "successRate": 75
+  },
+  "https://ecommerce-playground.lambdatest.io/index.php?route=account/login-errorMessage": {
+    "url": "https://ecommerce-playground.lambdatest.io/index.php?route=account/login",
+    "elementDescription": "errorMessage",
+    "workingSelectors": [
+      "css:.alert-danger"
+    ],
+    "failedSelectors": [],
+    "lastUpdated": "2025-06-26T00:55:04.711Z",
+    "successRate": 100
+  },
+  "https://ecommerce-playground.lambdatest.io/index.php?route=common/home-searchInput": {
+    "url": "https://ecommerce-playground.lambdatest.io/index.php?route=common/home",
+    "elementDescription": "searchInput",
+    "workingSelectors": [
+      "getByRole:textbox{\"name\":\"Search For Products\"}",
+      "getByRole:textbox",
+      "locator:input[name='search']"
+    ],
+    "failedSelectors": [],
+    "lastUpdated": "2025-06-26T03:29:32.708Z",
+    "successRate": 100
+  },
+  "https://ecommerce-playground.lambdatest.io/index.php?route=common/home-searchButton": {
+    "url": "https://ecommerce-playground.lambdatest.io/index.php?route=common/home",
+    "elementDescription": "searchButton",
+    "workingSelectors": [
+      "locator:button[type='submit']",
+      "locator:[type='submit']"
+    ],
+    "failedSelectors": [],
+    "lastUpdated": "2025-06-26T03:29:32.708Z",
+    "successRate": 100
+  },
+  "https://ecommerce-playground.lambdatest.io/index.php?route=common/home-inStockFilter": {
+    "url": "https://ecommerce-playground.lambdatest.io/index.php?route=common/home",
+    "elementDescription": "inStockFilter",
+    "workingSelectors": [
+      "locator:label[for='mz-fss-0--1']"
+    ],
+    "failedSelectors": [],
+    "lastUpdated": "2025-06-26T03:29:32.708Z",
+    "successRate": 100
+  },
+  "https://www.google.com/-searchInput": {
+    "url": "https://www.google.com/",
+    "elementDescription": "searchInput",
+    "workingSelectors": [
+      "css:[name=\"q\"]"
+    ],
+    "failedSelectors": [],
+    "lastUpdated": "2025-06-24T21:13:53.647Z",
+    "successRate": 100
+  },
+  "https://www.google.com/-searchButton": {
+    "url": "https://www.google.com/",
+    "elementDescription": "searchButton",
+    "workingSelectors": [
+      "css:[name=\"btnK\"]"
+    ],
+    "failedSelectors": [],
+    "lastUpdated": "2025-06-24T21:13:53.647Z",
+    "successRate": 100
+  },
+  "https://www.google.com/index.php?route=account/login-emailInputVisible": {
+    "url": "https://www.google.com/index.php?route=account/login",
+    "elementDescription": "emailInputVisible",
+    "workingSelectors": [],
+    "failedSelectors": [],
+    "lastUpdated": "2025-06-25T02:13:07.833Z",
+    "successRate": 100
+  },
+  "https://ecommerce-playground.lambdatest.io/-searchInput": {
+    "url": "https://ecommerce-playground.lambdatest.io/",
+    "elementDescription": "searchInput",
+    "workingSelectors": [
+      "locator:[name=\"search\"]"
+    ],
+    "failedSelectors": [],
+    "lastUpdated": "2025-06-25T02:23:17.501Z",
+    "successRate": 100
+  },
+  "https://ecommerce-playground.lambdatest.io/-searchButton": {
+    "url": "https://ecommerce-playground.lambdatest.io/",
+    "elementDescription": "searchButton",
+    "workingSelectors": [
+      "locator:[type=\"submit\"]"
+    ],
+    "failedSelectors": [],
+    "lastUpdated": "2025-06-25T02:23:17.501Z",
+    "successRate": 100
+  },
+  "https://ecommerce-playground.lambdatest.io/-searchResults": {
+    "url": "https://ecommerce-playground.lambdatest.io/",
+    "elementDescription": "searchResults",
+    "workingSelectors": [
+      "locator:ul li"
+    ],
+    "failedSelectors": [],
+    "lastUpdated": "2025-06-25T02:23:17.501Z",
+    "successRate": 100
+  },
+  "https://ecommerce-playground.lambdatest.io/index.php?route=common/home-inStockFilterVisible": {
+    "url": "https://ecommerce-playground.lambdatest.io/index.php?route=common/home",
+    "elementDescription": "inStockFilterVisible",
+    "workingSelectors": [],
+    "failedSelectors": [],
+    "lastUpdated": "2025-06-25T23:39:14.848Z",
+    "successRate": 100
+  },
+  "https://ecommerce-playground.lambdatest.io/index.php?route=common/home-filterButtonVisible": {
+    "url": "https://ecommerce-playground.lambdatest.io/index.php?route=common/home",
+    "elementDescription": "filterButtonVisible",
+    "workingSelectors": [],
+    "failedSelectors": [],
+    "lastUpdated": "2025-06-25T02:34:46.001Z",
+    "successRate": 100
+  },
+  "https://ecommerce-playground.lambdatest.io/index.php?route=common/home-searchInputVisible": {
+    "url": "https://ecommerce-playground.lambdatest.io/index.php?route=common/home",
+    "elementDescription": "searchInputVisible",
+    "workingSelectors": [],
+    "failedSelectors": [],
+    "lastUpdated": "2025-06-25T02:35:49.915Z",
+    "successRate": 100
+  },
+  "https://ecommerce-playground.lambdatest.io/index.php?route=common/home-productList": {
+    "url": "https://ecommerce-playground.lambdatest.io/index.php?route=common/home",
+    "elementDescription": "productList",
+    "workingSelectors": [
+      "locator:ul li"
+    ],
+    "failedSelectors": [],
+    "lastUpdated": "2025-06-25T23:47:39.318Z",
+    "successRate": 100
+  },
+  "https://ecommerce-playground.lambdatest.io/index.php?route=common/home-productTitle": {
+    "url": "https://ecommerce-playground.lambdatest.io/index.php?route=common/home",
+    "elementDescription": "productTitle",
+    "workingSelectors": [
+      "css:.product-title"
+    ],
+    "failedSelectors": [],
+    "lastUpdated": "2025-06-26T03:24:37.511Z",
+    "successRate": 100
+  },
+  "https://ecommerce-playground.lambdatest.io/index.php?route=common/home-productListItem": {
+    "url": "https://ecommerce-playground.lambdatest.io/index.php?route=common/home",
+    "elementDescription": "productListItem",
+    "workingSelectors": [
+      "css:ul li"
+    ],
+    "failedSelectors": [],
+    "lastUpdated": "2025-06-26T03:29:32.708Z",
+    "successRate": 100
+  }
+}
