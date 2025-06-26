@@ -25,8 +25,8 @@ export class GoogleGeminiService implements ILlmService { // <-- CLASE QUE IMPLE
     const apiKey = process.env.GOOGLE_API_KEY;
     if (!apiKey) { throw new Error("La variable de entorno GOOGLE_API_KEY no está definida."); }
     const genAI = new GoogleGenerativeAI(apiKey);
-    console.log('apiKey',apiKey)
-    this.model = genAI.getGenerativeModel({ model: "gemini-1.5-flash"  });
+    console.log('apiKey', apiKey)
+    this.model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
   }
 
 
@@ -37,8 +37,8 @@ export class GoogleGeminiService implements ILlmService { // <-- CLASE QUE IMPLE
     const userStoryAsString = userStory.join('\n');
 
     const patternsContext = detectedPatterns.length > 0
-        ? `Adicionalmente, un análisis estructural de la página ha detectado los siguientes patrones de UI: ${JSON.stringify(detectedPatterns, null, 2)}. Usa este contexto para generar selectores y pasos más precisos y relevantes. Por ejemplo, si detectas un 'form', prioriza los selectores dentro de ese formulario.`
-        : '';
+      ? `Adicionalmente, un análisis estructural de la página ha detectado los siguientes patrones de UI: ${JSON.stringify(detectedPatterns, null, 2)}. Usa este contexto para generar selectores y pasos más precisos y relevantes. Por ejemplo, si detectas un 'form', prioriza los selectores dentro de ese formulario.`
+      : '';
 
     // El prompt que ya perfeccionamos
     const prompt = `
@@ -319,6 +319,57 @@ EJEMPLO CON MÚLTIPLES OPCIONES:
 
 - Esto es solo un ejemplo conceptual, ya que existen muchos sitios webs, con distintos tipos de mensajes, por eso siempre asegurate de leer correctamente la historia de usuario y que ese sea tu punto de partida para todo lo demas.
 
+   REGLAS ADICIONALES PARA ASIGNACIÓN DE ELEMENTOS A PAGE OBJECTS:
+   - Cada elemento de UI debe ser asignado únicamente al Page Object de la página donde aparece visualmente en la(s) captura(s) correspondiente(s).
+   - Si un paso de prueba ("testStep") requiere interactuar con un elemento en una página específica (por ejemplo, "SearchResultsPage"), ese elemento debe estar definido en el array "locators" del Page Object de esa página.
+   - No incluyas elementos de la página de resultados en el Page Object de la página inicial, ni viceversa.
+   - No dupliques elementos entre Page Objects. Cada elemento debe estar solo en el Page Object donde aparece.
+   - Si tienes dudas sobre a qué página pertenece un elemento, analiza cuidadosamente la secuencia de capturas y el flujo de usuario.
+
+   EJEMPLO DE ASIGNACIÓN CORRECTA:
+   Si el filtro "inStockFilter" solo aparece en la página de resultados de búsqueda, debe estar así:
+   "additionalPageObjects": [
+     {
+       "className": "SearchResultsPage",
+       "locators": [
+         {
+           "name": "inStockFilter",
+           "elementType": "checkbox",
+           "actions": ["check"],
+           "selectors": [{ "type": "getByLabel", "value": "In Stock" }]
+         }
+       ]
+     }
+   ]
+   Y NO en el Page Object de la página inicial.
+
+   REGLAS ADICIONALES PARA SELECTORES:
+   - Para cada elemento en "locators", genera al menos 3 selectores de diferentes tipos. Prioriza en este orden:
+     1. getByRole (con "name" si es posible)
+     2. getByLabel
+     3. getByPlaceholder
+     4. css
+     5. xpath
+     6. getByText (solo para elementos de texto)
+   - Si el elemento tiene un atributo id o name, incluye un selector css o locator usando ese atributo.
+   - No inventes selectores: solo genera selectores que puedan existir razonablemente según la imagen, el contexto y el tipo de elemento.
+   - Si tienes acceso al HTML (o fragmento relevante), prioriza selectores que realmente existan en el DOM.
+   - Si el elemento no tiene un label visible, omite getByLabel y prioriza otros tipos.
+   - No repitas el mismo tipo de selector con valores diferentes; cada tipo debe ser único.
+   - El objetivo es maximizar la resiliencia: si un selector falla, los otros deben funcionar.
+
+   EJEMPLO DE LOCATORS PARA UN INPUT:
+   {
+     "name": "searchInput",
+     "elementType": "input",
+     "actions": ["fill"],
+     "selectors": [
+       { "type": "getByRole", "value": "textbox", "options": { "name": "Search" } },
+       { "type": "getByPlaceholder", "value": "Search" },
+       { "type": "css", "value": "input[name='search']" }
+     ]
+   }
+
  `;
 
 
@@ -342,5 +393,9 @@ EJEMPLO CON MÚLTIPLES OPCIONES:
       console.error("Error al comunicarse con la API de Google AI:", error);
       throw new Error("No se pudo obtener los activos de prueba desde la IA.");
     }
+
+
   }
+
 }
+

@@ -6,7 +6,9 @@
         "name": "searchInput",
         "elementType": "input",
         "actions": [
-          "fill"
+          "fill",
+          "clear",
+          "getValue"
         ],
         "selectors": [
           {
@@ -22,19 +24,19 @@
             "value": "input[name='search']"
           },
           {
-            "type": "css",
-            "value": "[name='search']"
-          },
-          {
             "type": "getByPlaceholder",
             "value": "Search For Products"
+          },
+          {
+            "type": "css",
+            "value": "input[name='search']"
           }
         ],
         "waitBefore": "visible",
         "metadata": {
           "enhanced": true,
           "confidence": 100,
-          "lastSuccess": "2025-06-26T03:34:04.742Z"
+          "lastSuccess": "2025-06-26T03:35:02.533Z"
         }
       },
       {
@@ -53,15 +55,19 @@
             "value": "[type='submit']"
           },
           {
-            "type": "css",
-            "value": "[type='submit']"
-          },
-          {
             "type": "getByRole",
             "value": "button",
             "options": {
-              "name": "SEARCH"
+              "name": "Search"
             }
+          },
+          {
+            "type": "css",
+            "value": "button:has-text('Search')"
+          },
+          {
+            "type": "xpath",
+            "value": "//div[@id='search']//button"
           }
         ],
         "waitBefore": "enabled",
@@ -69,47 +75,7 @@
         "metadata": {
           "enhanced": true,
           "confidence": 100,
-          "lastSuccess": "2025-06-26T03:34:04.742Z"
-        }
-      },
-      {
-        "name": "inStockFilter",
-        "elementType": "checkbox",
-        "actions": [
-          "check"
-        ],
-        "selectors": [
-          {
-            "type": "locator",
-            "value": "label[for='mz-fss-0--1']"
-          },
-          {
-            "type": "getByLabel",
-            "value": "In Stock"
-          }
-        ],
-        "waitBefore": "visible",
-        "metadata": {
-          "enhanced": true,
-          "confidence": 100,
-          "lastSuccess": "2025-06-26T03:34:04.742Z"
-        }
-      },
-      {
-        "name": "productTitle",
-        "elementType": "text",
-        "actions": [],
-        "selectors": [
-          {
-            "type": "css",
-            "value": ".product-title"
-          }
-        ],
-        "waitBefore": "visible",
-        "metadata": {
-          "enhanced": true,
-          "confidence": 100,
-          "lastSuccess": "2025-06-26T03:24:37.511Z"
+          "lastSuccess": "2025-06-26T03:35:02.533Z"
         }
       }
     ]
@@ -119,13 +85,66 @@
       "className": "SearchResultsPage",
       "locators": [
         {
+          "name": "inStockFilterCheckbox",
+          "elementType": "checkbox",
+          "actions": [
+            "check",
+            "uncheck"
+          ],
+          "selectors": [
+            {
+              "type": "getByLabel",
+              "value": "In Stock"
+            },
+            {
+              "type": "getByRole",
+              "value": "checkbox",
+              "options": {
+                "name": "In Stock"
+              }
+            },
+            {
+              "type": "css",
+              "value": "input[type='checkbox'] + label:has-text('In Stock')"
+            }
+          ],
+          "waitBefore": "visible"
+        },
+        {
           "name": "productList",
           "elementType": "list",
           "actions": [],
           "selectors": [
             {
               "type": "css",
-              "value": "ul li"
+              "value": "#content .product-layout"
+            },
+            {
+              "type": "locator",
+              "value": "div.product-thumb"
+            },
+            {
+              "type": "xpath",
+              "value": "//div[contains(@class, 'product-layout')]"
+            }
+          ],
+          "waitBefore": "visible"
+        },
+        {
+          "name": "searchResultTitle",
+          "elementType": "text",
+          "actions": [],
+          "selectors": [
+            {
+              "type": "getByRole",
+              "value": "heading",
+              "options": {
+                "name": "/Search -/i"
+              }
+            },
+            {
+              "type": "css",
+              "value": "#content > h1"
             }
           ],
           "waitBefore": "visible"
@@ -137,11 +156,9 @@
     {
       "page": "HomePage",
       "action": "navigate",
-      "params": [],
-      "waitFor": {
-        "element": "searchInput",
-        "state": "visible"
-      }
+      "params": [
+        "index.php?route=common/home"
+      ]
     },
     {
       "page": "HomePage",
@@ -157,9 +174,14 @@
     {
       "page": "HomePage",
       "action": "clickSearchButton",
+      "params": []
+    },
+    {
+      "page": "SearchResultsPage",
+      "action": "waitForSearchResultTitleVisible",
       "params": [],
       "waitFor": {
-        "element": "productTitle",
+        "element": "searchResultTitle",
         "state": "visible"
       },
       "assert": {
@@ -169,10 +191,10 @@
     },
     {
       "page": "SearchResultsPage",
-      "action": "checkInStockFilter",
+      "action": "checkInStockFilterCheckbox",
       "params": [],
       "waitFor": {
-        "element": "inStockFilter",
+        "element": "inStockFilterCheckbox",
         "state": "visible"
       }
     },
@@ -183,6 +205,9 @@
       "waitFor": {
         "element": "productList",
         "state": "visible"
+      },
+      "assert": {
+        "type": "visible"
       }
     }
   ]

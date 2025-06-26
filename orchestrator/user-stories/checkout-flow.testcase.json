@@ -3,7 +3,7 @@
   "path": "/index.php?route=common/home",
   "userStory": [
     "DADO que estoy en la página de inicio",
-    "CUANDO busco el producto 'MacBook'",
+    "CUANDO busco el producto 'MacBook' en la barra de busqueda",
     "Y hago clic en el botón de búsqueda",
     "Y hago clic en el filtro de casilla de verificación con el texto 'In Stock'",
     "ENTONCES la lista de productos debe actualizarse"
