@@ -19,7 +19,12 @@ export class BasePage {
 
   /**
    * Encuentra un elemento de forma inteligente probando múltiples selectores
+   *
+   *
    */
+
+
+
   async findSmartly(locators: Locator[], description: string): Promise<Locator> {
     const startTime = Date.now();
     const attempts: any[] = [];
@@ -173,5 +178,25 @@ export class BasePage {
    */
   getActionLog(): any[] {
     return this.actionLog;
+  }
+
+  /**
+   * Valida que al menos un selector funcione para cada elemento dado
+   */
+  public static async validateAllSelectors(page: Page, elements: { description: string, locators: Locator[] }[]) {
+    for (const { description, locators } of elements) {
+      let found = false;
+      for (const locator of locators) {
+        if (await locator.count() > 0) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        console.warn(`❌ Ningún selector funcionó para: ${description}`);
+      } else {
+        console.log(`✅ Al menos un selector funcionó para: ${description}`);
+      }
+    }
   }
 }

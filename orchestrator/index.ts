@@ -95,19 +95,9 @@ async function main() {
       execSync(`npm run generate:pom -- ${fullDefinitionPath}`, { stdio: 'inherit' });
       execSync(`npm run generate:spec -- ${fullDefinitionPath} ${testCasePath}`, { stdio: 'inherit' });
 
-      // =======================================================================
-      // INICIO DE LA CORRECCIÓN CRÍTICA
-      // =======================================================================
-      // ANTES (Incorrecto): El nombre del archivo de prueba se basaba en la clase del Page Object.
-      // const testFileName = testAssets.pageObject.className.replace(/([A-Z])/g, '-$1').toLowerCase().slice(1);
-
-      // AHORA (Correcto): El nombre del archivo se deriva del nombre del CASO DE PRUEBA,
       // sincronizándolo con la lógica de `generate-spec.ts`.
       const testFileName = testCase.name.replace(/\s+/g, '-').toLowerCase();
       const testFilePath = `tests/generated/${testFileName}.spec.ts`;
-      // =======================================================================
-      // FIN DE LA CORRECCIÓN CRÍTICA
-      // =======================================================================
 
       // --- PASO 5: EJECUCIÓN DE LA PRUEBA (CON LOGS EN TIEMPO REAL) ---
       console.log("\n🧪 Ejecutando prueba generada...");
@@ -122,9 +112,6 @@ async function main() {
     } catch (error: any) {
       console.error("\n❌ La prueba falló. Iniciando análisis inteligente...");
 
-      // =======================================================================
-      // CORRECCIÓN SECUNDARIA PARA ANÁLISIS DE FALLOS
-      // =======================================================================
       // Usar la misma lógica de nomenclatura para asegurar que se analiza el archivo correcto.
       const testFileNameForAnalysis = testCase.name.replace(/\s+/g, '-').toLowerCase();
       const testFilePathForAnalysis = `tests/generated/${testFileNameForAnalysis}.spec.ts`;

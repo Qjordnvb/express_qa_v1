@@ -2,10 +2,9 @@
   "name": "Simple Google Search Test",
   "path": "/",
   "userStory": [
-    "DADO que estoy en la página de inicio de Google",
-    "CUANDO hago clic en el botón 'No, gracias'",
-    "Y escribo 'Playwright' en el campo de búsqueda",
-    "Y hago clic en el botón 'Buscar con Google'",
-    "ENTONCES debo ver la página de resultados para 'Playwright'"
+    "DADO que estoy en la página principal de Google",
+    "CUANDO escribo 'Playwright' en el campo de búsqueda",
+    "Y presiono Enter o hago clic en el botón de búsqueda",
+    "ENTONCES debo ver resultados de búsqueda relacionados con Playwright"
   ]
 }

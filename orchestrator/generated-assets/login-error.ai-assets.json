@@ -1,0 +1,192 @@
+{
+  "pageObject": {
+    "className": "LoginPage",
+    "locators": [
+      {
+        "name": "emailInput",
+        "elementType": "input",
+        "actions": [
+          "fill",
+          "clear",
+          "getValue"
+        ],
+        "selectors": [
+          {
+            "type": "getByLabel",
+            "value": "E-Mail Address"
+          },
+          {
+            "type": "css",
+            "value": "input[name='email']"
+          },
+          {
+            "type": "xpath",
+            "value": "//input[@name='email']"
+          }
+        ],
+        "waitBefore": "visible",
+        "validateAfter": true,
+        "metadata": {
+          "enhanced": true,
+          "confidence": 100,
+          "lastSuccess": "2025-06-26T20:09:04.940Z"
+        }
+      },
+      {
+        "name": "passwordInput",
+        "elementType": "input",
+        "actions": [
+          "fill",
+          "clear"
+        ],
+        "selectors": [
+          {
+            "type": "getByLabel",
+            "value": "Password"
+          },
+          {
+            "type": "css",
+            "value": "input[name='password']"
+          },
+          {
+            "type": "xpath",
+            "value": "//input[@name='password']"
+          }
+        ],
+        "waitBefore": "visible",
+        "metadata": {
+          "enhanced": true,
+          "confidence": 100,
+          "lastSuccess": "2025-06-26T20:09:04.940Z"
+        }
+      },
+      {
+        "name": "loginButton",
+        "elementType": "button",
+        "actions": [
+          "click"
+        ],
+        "selectors": [
+          {
+            "type": "getByRole",
+            "value": "button",
+            "options": {
+              "name": "Login"
+            }
+          },
+          {
+            "type": "getByRole",
+            "value": "button"
+          },
+          {
+            "type": "css",
+            "value": "button[type='submit']"
+          },
+          {
+            "type": "css",
+            "value": "button:has-text('Login')"
+          },
+          {
+            "type": "xpath",
+            "value": "//button[text()='Login']"
+          }
+        ],
+        "waitBefore": "enabled",
+        "validateAfter": true,
+        "metadata": {
+          "enhanced": true,
+          "confidence": 75,
+          "lastSuccess": "2025-06-26T20:09:04.940Z"
+        }
+      },
+      {
+        "name": "errorMessage",
+        "elementType": "text",
+        "actions": [],
+        "selectors": [
+          {
+            "type": "css",
+            "value": ".alert-danger"
+          },
+          {
+            "type": "xpath",
+            "value": "//div[@class='alert-danger']"
+          },
+          {
+            "type": "getByText",
+            "value": "Warning: No match for E-Mail Address and/or Password."
+          }
+        ],
+        "waitBefore": "visible",
+        "metadata": {
+          "enhanced": true,
+          "confidence": 100,
+          "lastSuccess": "2025-06-26T19:47:06.256Z"
+        }
+      }
+    ]
+  },
+  "testSteps": [
+    {
+      "action": "navigate",
+      "params": [
+        "/index.php?route=account/login"
+      ],
+      "page": "LoginPage"
+    },
+    {
+      "action": "waitForEmailInputVisible",
+      "params": [],
+      "waitFor": {
+        "element": "emailInput",
+        "state": "visible"
+      },
+      "page": "LoginPage"
+    },
+    {
+      "action": "fillEmailInput",
+      "params": [
+        "noexiste@example.com"
+      ],
+      "page": "LoginPage"
+    },
+    {
+      "action": "fillPasswordInput",
+      "params": [
+        "password-incorrecto"
+      ],
+      "page": "LoginPage"
+    },
+    {
+      "action": "clickLoginButton",
+      "params": [],
+      "page": "LoginPage"
+    },
+    {
+      "action": "waitForErrorMessageVisible",
+      "params": [],
+      "waitFor": {
+        "element": "errorMessage",
+        "state": "visible"
+      },
+      "page": "LoginPage"
+    },
+    {
+      "action": "assertErrorMessageOneOf",
+      "params": [
+        [
+          "Warning: No match for E-Mail Address and/or Password.",
+          "Warning: Your account has exceeded allowed number of login attempts. Please try again in 1 hour."
+        ]
+      ],
+      "assert": {
+        "type": "oneOf",
+        "expectedOptions": [
+          "Warning: No match for E-Mail Address and/or Password.",
+          "Warning: Your account has exceeded allowed number of login attempts. Please try again in 1 hour."
+        ]
+      },
+      "page": "LoginPage"
+    }
+  ]
+}
