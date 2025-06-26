@@ -33,7 +33,7 @@ export default defineConfig({
   use: {
     baseURL: 'https://ecommerce-playground.lambdatest.io/',
     trace: 'on-first-retry',
-    viewport: { width: 1280, height: 720 },
+    viewport: { width: 1920, height: 1080 },
     ignoreHTTPSErrors: true,
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
 

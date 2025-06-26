@@ -1,5 +1,11 @@
 {
   "name": "Error user not register",
   "path": "/index.php?route=account/login",
-  "userStory": "Como usuario intento hacer login con credenciales incorrectas y se genera un mensaje de error."
+  "userStory": [
+    "DADO que estoy en la página de login",
+    "CUANDO ingreso un email incorrecto como 'noexiste@example.com'",
+    "Y ingreso una contraseña incorrecta como 'password-incorrecto'",
+    "Y hago clic en el botón 'Login'",
+    "ENTONCES debo ver un mensaje de error que contenga 'No match for E-Mail Address and/or Password.' o 'Your account has exceeded allowed number of login attempts.'"
+  ]
 }

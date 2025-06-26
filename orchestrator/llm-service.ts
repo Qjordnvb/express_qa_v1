@@ -6,7 +6,7 @@ import { OpenAIService } from "./llms/OpenAIService";
 // Esta función actúa como una fábrica que devuelve el servicio de IA correcto.
 export function getLlmService(): ILlmService {
   // Lee la variable de entorno. Si no existe, usa 'google' por defecto.
-  const provider = process.env.OPENAI_API_KEY|| 'openai';
+  const provider = process.env.GOOGLE_API_KEY|| 'google';
   console.log(`Usando el proveedor de IA: ${provider}`);
   switch (provider.toLowerCase()) {
     case 'anthropic':
