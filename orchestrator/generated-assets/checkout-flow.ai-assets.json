@@ -34,7 +34,7 @@
         "metadata": {
           "enhanced": true,
           "confidence": 100,
-          "lastSuccess": "2025-06-26T03:24:37.511Z"
+          "lastSuccess": "2025-06-26T03:34:04.742Z"
         }
       },
       {
@@ -69,7 +69,7 @@
         "metadata": {
           "enhanced": true,
           "confidence": 100,
-          "lastSuccess": "2025-06-26T03:24:37.511Z"
+          "lastSuccess": "2025-06-26T03:34:04.742Z"
         }
       },
       {
@@ -92,20 +92,25 @@
         "metadata": {
           "enhanced": true,
           "confidence": 100,
-          "lastSuccess": "2025-06-26T03:24:37.511Z"
+          "lastSuccess": "2025-06-26T03:34:04.742Z"
         }
       },
       {
-        "name": "productListItem",
-        "elementType": "list",
+        "name": "productTitle",
+        "elementType": "text",
         "actions": [],
         "selectors": [
           {
             "type": "css",
-            "value": "ul li"
+            "value": ".product-title"
           }
         ],
-        "waitBefore": "visible"
+        "waitBefore": "visible",
+        "metadata": {
+          "enhanced": true,
+          "confidence": 100,
+          "lastSuccess": "2025-06-26T03:24:37.511Z"
+        }
       }
     ]
   },
@@ -114,13 +119,13 @@
       "className": "SearchResultsPage",
       "locators": [
         {
-          "name": "productTitle",
-          "elementType": "text",
+          "name": "productList",
+          "elementType": "list",
           "actions": [],
           "selectors": [
             {
               "type": "css",
-              "value": "h1.product-title"
+              "value": "ul li"
             }
           ],
           "waitBefore": "visible"
@@ -132,9 +137,7 @@
     {
       "page": "HomePage",
       "action": "navigate",
-      "params": [
-        "/"
-      ],
+      "params": [],
       "waitFor": {
         "element": "searchInput",
         "state": "visible"
@@ -156,7 +159,7 @@
       "action": "clickSearchButton",
       "params": [],
       "waitFor": {
-        "element": "productListItem",
+        "element": "productTitle",
         "state": "visible"
       },
       "assert": {
@@ -166,19 +169,19 @@
     },
     {
       "page": "SearchResultsPage",
-      "action": "waitForProductTitleVisible",
+      "action": "checkInStockFilter",
       "params": [],
       "waitFor": {
-        "element": "productTitle",
+        "element": "inStockFilter",
         "state": "visible"
       }
     },
     {
       "page": "SearchResultsPage",
-      "action": "checkInStockFilter",
+      "action": "waitForProductListVisible",
       "params": [],
       "waitFor": {
-        "element": "productListItem",
+        "element": "productList",
         "state": "visible"
       }
     }
