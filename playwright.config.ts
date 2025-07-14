@@ -31,12 +31,11 @@ export default defineConfig({
     timeout: 10 * 1000, // 10 segundos para las aserciones de expect
   },
   use: {
-    baseURL: 'https://ecommerce-playground.lambdatest.io/',
+    baseURL: 'https://google.com/',
     trace: 'on-first-retry',
     viewport: { width: 1920, height: 1080 },
     ignoreHTTPSErrors: true,
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-
   },
 
   /* Configure projects for major browsers */

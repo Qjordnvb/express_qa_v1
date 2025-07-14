@@ -4,7 +4,7 @@
   "userStory": [
     "DADO que estoy en la página principal de Google",
     "CUANDO escribo 'Playwright' en el campo de búsqueda",
-    "Y presiono Enter o hago clic en el botón de búsqueda",
-    "ENTONCES debo ver resultados de búsqueda relacionados con Playwright"
+    "Y presiono Enter",
+    "ENTONCES la URL debe contener 'search' y 'Playwright'"
   ]
 }

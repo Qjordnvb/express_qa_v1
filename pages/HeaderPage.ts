@@ -12,12 +12,12 @@ export class HeaderPage extends BasePage {
     // Creamos arrays de Locators, combinando las mejores prácticas.
     this.searchInputLocators = [
       this.page.getByRole('textbox', { name: 'Search For Products' }), // El original y más robusto.
-      this.page.locator("input[name='search']")                       // Un selector de respaldo.
+      this.page.locator("input[name='search']"), // Un selector de respaldo.
     ];
 
     this.searchButtonLocators = [
-      this.page.getByRole('button', { name: 'Search' }),          // El original y más robusto.
-      this.page.locator("#search button")                          // Un selector de respaldo.
+      this.page.getByRole('button', { name: 'Search' }), // El original y más robusto.
+      this.page.locator('#search button'), // Un selector de respaldo.
     ];
   }
 

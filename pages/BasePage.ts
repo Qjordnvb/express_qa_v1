@@ -3,8 +3,24 @@ import { type Page, type Locator } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 
+// --- Interfaces para el Logging y Debugging ---
+
+interface ActionLog {
+  action: string;
+  details: Record<string, unknown>;
+  timestamp: string;
+}
+
+interface AttemptLog {
+  index: number;
+  selector: string;
+  count?: number;
+  success?: boolean;
+  error?: string;
+}
+
 export class BasePage {
-  private actionLog: any[] = [];
+  private actionLog: ActionLog[] = [];
 
   constructor(protected page: Page) {}
 
@@ -19,15 +35,10 @@ export class BasePage {
 
   /**
    * Encuentra un elemento de forma inteligente probando múltiples selectores
-   *
-   *
    */
-
-
-
   async findSmartly(locators: Locator[], description: string): Promise<Locator> {
     const startTime = Date.now();
-    const attempts: any[] = [];
+    const attempts: AttemptLog[] = [];
 
     for (let i = 0; i < locators.length; i++) {
       const locator = locators[i];
@@ -37,7 +48,7 @@ export class BasePage {
           index: i,
           selector: locator.toString(),
           count,
-          success: count > 0
+          success: count > 0,
         });
 
         if (count > 0) {
@@ -47,19 +58,22 @@ export class BasePage {
             selectorIndex: i,
             totalSelectors: locators.length,
             duration,
-            found: true
+            found: true,
           });
 
           if (count > 1) {
-            console.warn(`⚠️ Selector encontró ${count} elementos para ${description}. Usando el primero.`);
+            console.warn(
+              `⚠️ Selector encontró ${count} elementos para ${description}. Usando el primero.`,
+            );
           }
           return locator.first();
         }
-      } catch (e: any) {
+      } catch (e) {
+        const error = e instanceof Error ? e.message : String(e);
         attempts.push({
           index: i,
           selector: locator.toString(),
-          error: e.message
+          error,
         });
         continue;
       }
@@ -69,7 +83,7 @@ export class BasePage {
     this.log('findElementFailed', {
       description,
       attempts,
-      duration: Date.now() - startTime
+      duration: Date.now() - startTime,
     });
 
     // Intentar esperar por el primero
@@ -80,14 +94,16 @@ export class BasePage {
     } catch (e) {
       // Guardar información detallada del fallo
       await this.saveDebugInfo(description, attempts);
-      throw new Error(`No se pudo encontrar el elemento: ${description}. Probados ${locators.length} selectores.`);
+      throw new Error(
+        `No se pudo encontrar el elemento: ${description}. Probados ${locators.length} selectores.`,
+      );
     }
   }
 
   /**
    * Guarda información de debug cuando falla un elemento
    */
-  private async saveDebugInfo(description: string, attempts: any[]): Promise<void> {
+  private async saveDebugInfo(description: string, attempts: AttemptLog[]): Promise<void> {
     const debugDir = 'test-results/debug';
     if (!fs.existsSync(debugDir)) {
       fs.mkdirSync(debugDir, { recursive: true });
@@ -106,7 +122,7 @@ export class BasePage {
       htmlSnippet: await this.page.evaluate(() => {
         const body = document.body;
         return body ? body.innerHTML.substring(0, 1000) : 'No body found';
-      })
+      }),
     };
 
     fs.writeFileSync(debugFile, JSON.stringify(debugInfo, null, 2));
@@ -116,11 +132,11 @@ export class BasePage {
   /**
    * Registra todas las acciones para debugging
    */
-  private log(action: string, details: any): void {
+  private log(action: string, details: Record<string, unknown>): void {
     this.actionLog.push({
       action,
       details,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 
@@ -138,7 +154,7 @@ export class BasePage {
   async takeScreenshot(name: string): Promise<void> {
     await this.page.screenshot({
       path: `test-results/${name}-${Date.now()}.png`,
-      fullPage: true
+      fullPage: true,
     });
   }
 
@@ -154,7 +170,7 @@ export class BasePage {
       'button:has-text("Aceptar")',
       '.close-button',
       '[class*="close"]',
-      '[class*="dismiss"]'
+      '[class*="dismiss"]',
     ];
 
     for (const selector of popupSelectors) {
@@ -176,18 +192,21 @@ export class BasePage {
   /**
    * Obtiene el log de acciones para análisis
    */
-  getActionLog(): any[] {
+  getActionLog(): ActionLog[] {
     return this.actionLog;
   }
 
   /**
    * Valida que al menos un selector funcione para cada elemento dado
    */
-  public static async validateAllSelectors(page: Page, elements: { description: string, locators: Locator[] }[]) {
+  public static async validateAllSelectors(
+    page: Page,
+    elements: { description: string; locators: Locator[] }[],
+  ): Promise<void> {
     for (const { description, locators } of elements) {
       let found = false;
       for (const locator of locators) {
-        if (await locator.count() > 0) {
+        if ((await locator.count()) > 0) {
           found = true;
           break;
         }

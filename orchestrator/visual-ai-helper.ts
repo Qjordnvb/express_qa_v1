@@ -1,56 +1,86 @@
 // orchestrator/visual-ai-helper.ts
 import { Page } from '@playwright/test';
 import { getLlmService } from './llm-service';
+import { ILlmService } from './llms/ILlmService';
+
+// --- Interfaces para los resultados del análisis visual ---
+
+export interface BoundingBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface VisualFindResult {
+  found: boolean;
+  boundingBox: BoundingBox;
+  suggestedSelectors: string[];
+  confidence: number;
+  elementType: string;
+  attributes: {
+    text?: string;
+    placeholder?: string;
+    ariaLabel?: string;
+  };
+}
+
+export interface VisualCompareResult {
+  matches: boolean;
+  confidence: number;
+  explanation: string;
+  differences: string[];
+}
+
+export interface UIChange {
+  type: 'added' | 'removed' | 'modified';
+  element: string;
+  impact: 'high' | 'medium' | 'low';
+}
+
+export interface UIChangeResult {
+  isFirstRun?: boolean;
+  screenshot?: Buffer;
+  hasSignificantChanges?: boolean;
+  changes?: UIChange[];
+  recommendation?: 'continue' | 'revisar' | 'actualizar';
+}
 
 export class VisualAIHelper {
-  private llmService = getLlmService();
-  private visualCache = new Map<string, any>();
+  private llmService: ILlmService = getLlmService();
+  private visualCache = new Map<string, VisualFindResult>();
 
   constructor(private page: Page) {}
 
   /**
    * Encuentra un elemento usando descripción visual cuando los selectores fallan
    */
-  async findElementVisually(description: string): Promise<any> {
+  async findElementVisually(description: string): Promise<VisualFindResult | null> {
     console.log(`👁️ Buscando visualmente: "${description}"`);
 
-    // Verificar cache
     const cacheKey = `${this.page.url()}-${description}`;
     if (this.visualCache.has(cacheKey)) {
-      return this.visualCache.get(cacheKey);
+      return this.visualCache.get(cacheKey) || null;
     }
 
-    // Tomar screenshot
     const screenshot = await this.page.screenshot({ fullPage: true });
 
-    // Pedir a la IA que encuentre el elemento
     const prompt = `
     Analiza esta captura de pantalla y encuentra el elemento que coincida con: "${description}"
+    Devuelve un JSON con la estructura definida.`;
 
-    Devuelve un JSON con:
-    {
-      "found": true/false,
-      "boundingBox": { "x": 0, "y": 0, "width": 0, "height": 0 },
-      "suggestedSelectors": ["selector1", "selector2"],
-      "confidence": 0.0-1.0,
-      "elementType": "button/input/link/text/image",
-      "attributes": { "text": "", "placeholder": "", "ariaLabel": "" }
-    }
-    `;
-
-    const result = await this.llmService.getTestAssetsFromIA(
+    // La IA debería devolver algo que coincida con VisualFindResult
+    const result = (await this.llmService.getTestAssetsFromIA(
       [prompt],
-      screenshot.toString('base64')
-    );
+      screenshot.toString('base64'),
+    )) as unknown as VisualFindResult;
 
-    if (result.found) {
-      // Crear un selector basado en la posición
-      const selector = await this.createSelectorFromBoundingBox(result.boundingBox);
-      this.visualCache.set(cacheKey, { selector, metadata: result });
-      return selector;
+    if (result && result.found) {
+      this.visualCache.set(cacheKey, result);
+      return result;
     }
 
-    throw new Error(`No se pudo encontrar visualmente: ${description}`);
+    return null;
   }
 
   /**
@@ -61,59 +91,37 @@ export class VisualAIHelper {
 
     const prompt = `
     Analiza esta captura y determina si se cumple: "${expectedDescription}"
+    Devuelve un JSON con la estructura definida.`;
 
-    Devuelve:
-    {
-      "matches": true/false,
-      "confidence": 0.0-1.0,
-      "explanation": "explicación de lo que ves",
-      "differences": ["diferencia1", "diferencia2"]
-    }
-    `;
-
-    const result = await this.llmService.getTestAssetsFromIA(
+    const result = (await this.llmService.getTestAssetsFromIA(
       [prompt],
-      screenshot.toString('base64')
-    );
+      screenshot.toString('base64'),
+    )) as unknown as VisualCompareResult;
 
-    return result.matches && result.confidence > 0.8;
+    return result && result.matches && result.confidence > 0.8;
   }
 
   /**
    * Detecta cambios inesperados en la UI
    */
-  async detectUIChanges(baselineScreenshot?: Buffer): Promise<any> {
+  async detectUIChanges(baselineScreenshot?: Buffer): Promise<UIChangeResult> {
     const currentScreenshot = await this.page.screenshot();
 
     if (!baselineScreenshot) {
-      // Primera ejecución, guardar como baseline
       return {
         isFirstRun: true,
-        screenshot: currentScreenshot
+        screenshot: currentScreenshot,
       };
     }
 
     const prompt = `
     Compara estas dos capturas de pantalla e identifica cambios significativos.
+    Devuelve un JSON con la estructura definida.`;
 
-    Reporta:
-    {
-      "hasSignificantChanges": true/false,
-      "changes": [
-        {
-          "type": "added/removed/modified",
-          "element": "descripción del elemento",
-          "impact": "high/medium/low"
-        }
-      ],
-      "recommendation": "continuar/revisar/actualizar"
-    }
-    `;
-
-    const result = await this.llmService.getTestAssetsFromIA(
+    const result = (await this.llmService.getTestAssetsFromIA(
       [prompt],
-      currentScreenshot.toString('base64')
-    );
+      currentScreenshot.toString('base64'),
+    )) as unknown as UIChangeResult;
 
     return result;
   }
@@ -121,38 +129,31 @@ export class VisualAIHelper {
   /**
    * Crea un selector desde coordenadas
    */
-  private async createSelectorFromBoundingBox(box: any): Promise<string> {
-    // Encontrar el elemento en esas coordenadas
-    const element = await this.page.evaluateHandle(({ x, y }) => {
+  private async createSelectorFromBoundingBox(box: BoundingBox): Promise<string> {
+    const elementHandle = await this.page.evaluateHandle(({ x, y }) => {
       return document.elementFromPoint(x + 10, y + 10);
     }, box);
 
+    const element = elementHandle.asElement();
     if (element) {
-      // Intentar obtener un selector único
-      const selector = await this.page.evaluate(el => {
-        if (!el) return null;
-
-        // Priorizar data-testid
+      const selector = await this.page.evaluate((el) => {
         if (el.getAttribute('data-testid')) {
           return `[data-testid="${el.getAttribute('data-testid')}"]`;
         }
-
-        // ID único
         if (el.id) {
           return `#${el.id}`;
         }
-
-        // Clase + texto
-        if (el.className && el.textContent) {
+        if (el.className && typeof el.className === 'string' && el.textContent) {
           return `.${el.className.split(' ')[0]}:has-text("${el.textContent.trim()}")`;
         }
-
         return null;
       }, element);
 
-      return selector || `xpath=//*[contains(text(), "${box.text || ''}")]`;
+      if (selector) return selector;
     }
 
-    throw new Error('No se pudo crear selector desde coordenadas');
+    // Fallback a XPath si no se puede generar un selector más robusto
+    const textContent = await element?.textContent();
+    return `xpath=//*[contains(text(), "${textContent || ''}")]`;
   }
 }

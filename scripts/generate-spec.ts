@@ -6,15 +6,15 @@ import * as path from 'path';
 interface TestStep {
   page: string; // OBLIGATORIO: Indica qué Page Object usar
   action: string;
-  params: any[];
+  params: unknown[];
   waitFor?: {
     element: string;
     state: string;
   };
   assert?: {
     type: string;
-    expected?: any;
-    expectedOptions?: any[];
+    expected?: unknown;
+    expectedOptions?: unknown[];
   };
 }
 
@@ -46,10 +46,6 @@ if (!fullDefinitionPath || !testCasePath) {
 const fullDefinition: FullDefinition = JSON.parse(fs.readFileSync(fullDefinitionPath, 'utf8'));
 const testCase: TestCase = JSON.parse(fs.readFileSync(testCasePath, 'utf8'));
 const { pageObject, additionalPageObjects = [], testSteps } = fullDefinition;
-
-// =======================================================================
-// INICIO DE LA MODIFICACIÓN: Lógica Multi-Página
-// =======================================================================
 
 // 1. Identificar todos los Page Objects únicos que se necesitan para el flujo.
 const allPageClasses = [pageObject, ...additionalPageObjects];
@@ -88,7 +84,7 @@ const specSteps = testSteps.map((step, index) => {
   const paramsString = step.params.map(p => JSON.stringify(p)).join(', ');
   let stepCode = '';
 
-  // Lógica de generación de pasos (sin cambios en su lógica interna, solo usando 'instanceName')
+  // Lógica de generación de pasos
   if (step.action.toLowerCase().includes('navigate')) {
     stepCode = `await ${instanceName}.navigate(${JSON.stringify(testCase.path)});`;
   } else if (step.action.startsWith('expect')) {
@@ -103,10 +99,6 @@ const specSteps = testSteps.map((step, index) => {
 
   return stepCode;
 }).join('\n    ');
-
-// =======================================================================
-// FIN DE LA MODIFICACIÓN
-// =======================================================================
 
 
 // Construir el template final del archivo de prueba
@@ -140,7 +132,6 @@ ${pomInitializations}
       console.log('✅ Test "${testCase.name}" ejecutado con éxito!');
     } catch (error) {
       console.error('❌ Fallo detectado en el flujo de prueba:', error);
-      // La captura de fallo ahora se maneja exclusivamente en afterEach.
       throw error;
     }
   });
@@ -156,12 +147,10 @@ ${pomInitializations}
       const safeTestName = testInfo.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
       const baseFilePath = path.join(failureDir, \`\${safeTestName}_\${timestamp}\`);
 
-      // Guardar captura de pantalla
       const screenshotPath = \`\${baseFilePath}_screenshot.png\`;
       await page.screenshot({ path: screenshotPath, fullPage: true });
       console.log(\`[DEBUG] Captura de pantalla de fallo guardada en: \${screenshotPath}\`);
 
-      // Guardar HTML
       const htmlPath = \`\${baseFilePath}_page.html\`;
       const html = await page.content();
       await fs.promises.writeFile(htmlPath, html);

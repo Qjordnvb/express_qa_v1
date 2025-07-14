@@ -1,6 +1,8 @@
 // orchestrator/llms/GoogleGeminiService.ts
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
-import { ILlmService } from './ILlmService'; // <-- AÑADIDO
+import { ILlmService } from './ILlmService';
+import { AIAsserts } from '../failure-analyzer';
+import { DetectedPattern } from '../ui-pattern-detector';
 
 const generationConfig = {
   temperature: 0.05, // Hacemos a la IA menos "creativa" para que siga el formato
@@ -12,33 +14,49 @@ const generationConfig = {
 const safetySettings = [
   { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
   { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-  { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-  { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+  {
+    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
 ];
 
-export class GoogleGeminiService implements ILlmService { // <-- CLASE QUE IMPLEMENTA LA INTERFAZ
+export class GoogleGeminiService implements ILlmService {
   private model;
-
-
 
   constructor() {
     const apiKey = process.env.GOOGLE_API_KEY;
-    if (!apiKey) { throw new Error("La variable de entorno GOOGLE_API_KEY no está definida."); }
+    if (!apiKey) {
+      throw new Error('La variable de entorno GOOGLE_API_KEY no está definida.');
+    }
     const genAI = new GoogleGenerativeAI(apiKey);
-    console.log('apiKey', apiKey)
-    this.model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+    console.log('apiKey', apiKey);
+    this.model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
   }
 
-
-
-  async getTestAssetsFromIA(userStory: string[], imageBase64: string, detectedPatterns: any[] = []): Promise<any> {
-    console.log("Enviando historia de usuario estructurada (Gherkin), imagen y contexto de UI a Google Gemini...");
+  async getTestAssetsFromIA(
+    userStory: string[],
+    imageBase64: string,
+    detectedPatterns: DetectedPattern[] = [],
+  ): Promise<AIAsserts | null> {
+    console.log(
+      'Enviando historia de usuario estructurada (Gherkin), imagen y contexto de UI a Google Gemini...',
+    );
 
     const userStoryAsString = userStory.join('\n');
 
-    const patternsContext = detectedPatterns.length > 0
-      ? `Adicionalmente, un análisis estructural de la página ha detectado los siguientes patrones de UI: ${JSON.stringify(detectedPatterns, null, 2)}. Usa este contexto para generar selectores y pasos más precisos y relevantes. Por ejemplo, si detectas un 'form', prioriza los selectores dentro de ese formulario.`
-      : '';
+    const patternsContext =
+      detectedPatterns.length > 0
+        ? `Adicionalmente, un análisis estructural de la página ha detectado los siguientes patrones de UI: ${JSON.stringify(
+            detectedPatterns,
+            null,
+            2,
+          )}. Usa este contexto para generar selectores y pasos más precisos y relevantes. Por ejemplo, si detectas un 'form', prioriza los selectores dentro de ese formulario.`
+        : '';
+
 
     // El prompt que ya perfeccionamos
     const prompt = `
@@ -372,11 +390,14 @@ EJEMPLO CON MÚLTIPLES OPCIONES:
 
  `;
 
-
-
     try {
       const result = await this.model.generateContent({
-        contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType: 'image/png', data: imageBase64 } }] }],
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: prompt }, { inlineData: { mimeType: 'image/png', data: imageBase64 } }],
+          },
+        ],
         generationConfig,
         safetySettings,
       });
@@ -384,18 +405,14 @@ EJEMPLO CON MÚLTIPLES OPCIONES:
       const startIndex = responseText.indexOf('{');
       const endIndex = responseText.lastIndexOf('}');
       if (startIndex === -1 || endIndex === -1) {
-        throw new Error("No se encontró un objeto JSON válido en la respuesta de la IA.");
+        throw new Error('No se encontró un objeto JSON válido en la respuesta de la IA.');
       }
       const jsonString = responseText.substring(startIndex, endIndex + 1);
-      console.log("IA ha respondido. Parseando JSON extraído...");
+      console.log('IA ha respondido. Parseando JSON extraído...');
       return JSON.parse(jsonString);
     } catch (error) {
-      console.error("Error al comunicarse con la API de Google AI:", error);
-      throw new Error("No se pudo obtener los activos de prueba desde la IA.");
+      console.error('Error al comunicarse con la API de Google AI:', error);
+      throw new Error('No se pudo obtener los activos de prueba desde la IA.');
     }
-
-
   }
-
 }
-

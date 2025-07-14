@@ -8,17 +8,24 @@ export class AnthropicClaudeService implements ILlmService {
   constructor() {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      throw new Error("La variable de entorno ANTHROPIC_API_KEY no está definida.");
+      throw new Error('La variable de entorno ANTHROPIC_API_KEY no está definida.');
     }
     this.anthropic = new Anthropic({ apiKey });
   }
 
-  async getTestAssetsFromIA(userStory: string[], imageBase64: string, detectedPatterns: any[] = []): Promise<any> {
-    console.log("Enviando historia de usuario estructurada (Gherkin), imagen y contexto de UI a Google Gemini...");
+  async getTestAssetsFromIA(
+    userStory: string[],
+    imageBase64: string,
+    detectedPatterns: any[] = [],
+  ): Promise<any> {
+    console.log(
+      'Enviando historia de usuario estructurada (Gherkin), imagen y contexto de UI a Google Gemini...',
+    );
 
     const userStoryAsString = userStory.join('\n');
 
-    const patternsContext = detectedPatterns.length > 0
+    const patternsContext =
+      detectedPatterns.length > 0
         ? `Adicionalmente, un análisis estructural de la página ha detectado los siguientes patrones de UI: ${JSON.stringify(detectedPatterns, null, 2)}. Usa este contexto para generar selectores y pasos más precisos y relevantes. Por ejemplo, si detectas un 'form', prioriza los selectores dentro de ese formulario.`
         : '';
 
@@ -79,28 +86,29 @@ export class AnthropicClaudeService implements ILlmService {
   `;
     try {
       const msg = await this.anthropic.messages.create({
-        model: "claude-3-haiku-20240307", // Usamos el modelo más rápido de Claude
+        model: 'claude-3-haiku-20240307', // Usamos el modelo más rápido de Claude
         max_tokens: 4096,
-        system: "Tu única función es devolver un objeto JSON válido basado en la tarea y el ejemplo proporcionados, sin ningún texto adicional o envoltura de markdown.",
+        system:
+          'Tu única función es devolver un objeto JSON válido basado en la tarea y el ejemplo proporcionados, sin ningún texto adicional o envoltura de markdown.',
         messages: [
           {
-            "role": "user",
-            "content": [
+            role: 'user',
+            content: [
               {
-                "type": "image",
-                "source": {
-                  "type": "base64",
-                  "media_type": "image/png",
-                  "data": imageBase64,
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: 'image/png',
+                  data: imageBase64,
                 },
               },
               {
-                "type": "text",
-                "text": prompt
-              }
+                type: 'text',
+                text: prompt,
+              },
             ],
-          }
-        ]
+          },
+        ],
       });
 
       // 1. Obtenemos el primer bloque de contenido.
@@ -114,21 +122,25 @@ export class AnthropicClaudeService implements ILlmService {
         const startIndex = responseText.indexOf('{');
         const endIndex = responseText.lastIndexOf('}');
         if (startIndex === -1 || endIndex === -1) {
-          throw new Error("No se encontró un objeto JSON válido en la respuesta de texto de la IA.");
+          throw new Error(
+            'No se encontró un objeto JSON válido en la respuesta de texto de la IA.',
+          );
         }
         const jsonString = responseText.substring(startIndex, endIndex + 1);
 
-        console.log("IA (Claude) ha respondido. Parseando JSON...");
+        console.log('IA (Claude) ha respondido. Parseando JSON...');
         return JSON.parse(jsonString);
       } else {
         // Si la IA no devuelve un bloque de texto, lanzamos un error claro.
-        console.error("La respuesta de la IA no fue un bloque de texto válido. Respuesta recibida:", msg.content);
-        throw new Error("La respuesta de la IA no tuvo el formato esperado.");
+        console.error(
+          'La respuesta de la IA no fue un bloque de texto válido. Respuesta recibida:',
+          msg.content,
+        );
+        throw new Error('La respuesta de la IA no tuvo el formato esperado.');
       }
-
     } catch (error) {
-      console.error("Error al comunicarse con la API de Anthropic:", error);
-      throw new Error("No se pudo obtener los activos de prueba desde la IA.");
+      console.error('Error al comunicarse con la API de Anthropic:', error);
+      throw new Error('No se pudo obtener los activos de prueba desde la IA.');
     }
   }
 }
