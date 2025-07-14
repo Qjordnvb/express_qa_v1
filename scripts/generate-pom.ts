@@ -3,10 +3,16 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // --- Definición de Interfaces ---
+interface SelectorOptions {
+  name?: string;
+  exact?: boolean;
+  [key: string]: unknown;
+}
+
 interface SelectorDef {
   type: 'locator' | 'getByRole' | 'getByText' | 'getByLabel' | 'getByPlaceholder' | 'css';
   value: string;
-  options?: any;
+  options?: SelectorOptions;
 }
 
 interface LocatorAction {
@@ -23,11 +29,19 @@ interface PageDefinition {
   locators: LocatorAction[];
 }
 
-// MODIFICADO: La definición completa ahora puede incluir múltiples Page Objects.
+interface TestStep {
+  page?: string;
+  action: string;
+  params?: unknown[];
+  waitFor?: unknown;
+  assert?: unknown;
+  [key: string]: unknown;
+}
+
 interface FullDefinition {
   pageObject: PageDefinition;
   additionalPageObjects?: PageDefinition[];
-  testSteps: any[];
+  testSteps: TestStep[];
 }
 
 // --- Funciones Auxiliares ---
@@ -62,7 +76,7 @@ const buildLocatorsArray = (selectors: SelectorDef[]): string => {
 // =======================================================================
 // Se respeta el código original y se AÑADE la lógica proactiva.
 
-const generateMethodsForElement = (loc: LocatorAction, testSteps: any[]): string => {
+const generateMethodsForElement = (loc: LocatorAction, testSteps: TestStep[]): string => {
   const methods: string[] = [];
   // Usamos un Set para evitar generar el mismo método dos veces.
   const generatedMethodNames = new Set<string>();
@@ -273,7 +287,7 @@ ${buildLocatorsArray(loc.selectors)}
 // FIN DE LA MODIFICACIÓN
 // =======================================================================
 
-function generatePageObjectClass(pageDefinition: PageDefinition, allTestSteps: any[]): { className: string; content: string; elementCount: number; methodCount: number; } {
+function generatePageObjectClass(pageDefinition: PageDefinition, allTestSteps: TestStep[]): { className: string; content: string; elementCount: number; methodCount: number; } {
     const { className, locators } = pageDefinition;
     if (!locators || !className) {
         throw new Error(`Cada definición de "pageObject" debe contener "className" y "locators". Error en definición: ${JSON.stringify(pageDefinition)}`);

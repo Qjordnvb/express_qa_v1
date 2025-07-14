@@ -6,61 +6,84 @@ import * as fs from 'fs';
 import { execSync } from 'child_process';
 import { chromium, Page, Browser } from '@playwright/test';
 import { getLlmService } from './llm-service';
+import { ILlmService } from './llms/ILlmService';
 import { LearningSystem } from './learning-system';
-import { FailureAnalyzer } from './failure-analyzer';
+import {
+  FailureAnalyzer,
+  AIAsserts,
+  FailureAnalysis,
+
+} from './failure-analyzer';
 import { UIPatternDetector } from './ui-pattern-detector';
 import playwrightConfig from '../playwright.config';
 
 interface TestCase {
   name: string;
   path: string;
-  userStory: string;
+  userStory: string[];
 }
 
-async function getOrGenerateAssets(testCase: TestCase, testCasePath: string, llmService: any): Promise<any> {
-    const fullDefinitionPath = testCasePath.replace('.testcase.json', '.ai-assets.json');
-    const baseURL = playwrightConfig.use?.baseURL;
-    if (!baseURL) throw new Error("baseURL no está definida en playwright.config.ts");
-    const fullUrl = new URL(testCase.path, baseURL).toString();
+async function getOrGenerateAssets(
+  testCase: TestCase,
+  testCasePath: string,
+  llmService: ILlmService,
+): Promise<AIAsserts | undefined> {
+  const fullDefinitionPath = testCasePath.replace('.testcase.json', '.ai-assets.json');
+  const baseURL = playwrightConfig.use?.baseURL;
+  if (!baseURL) throw new Error('baseURL no está definida en playwright.config.ts');
+  const fullUrl = new URL(testCase.path, baseURL).toString();
 
-    if (fs.existsSync(fullDefinitionPath)) {
-        console.log(`[LOG] ℹ️ Usando archivo de assets existente: ${path.basename(fullDefinitionPath)}`);
-        return JSON.parse(fs.readFileSync(fullDefinitionPath, 'utf8'));
-    }
+  if (fs.existsSync(fullDefinitionPath)) {
+    console.log(
+      `[LOG] ℹ️ Usando archivo de assets existente: ${path.basename(fullDefinitionPath)}`,
+    );
+    return JSON.parse(fs.readFileSync(fullDefinitionPath, 'utf8')) as AIAsserts;
+  }
 
-    console.log(`[LOG] 📝 No se encontró ${path.basename(fullDefinitionPath)}. Generando desde la IA...`);
-    const browser: Browser = await chromium.launch();
-    const page: Page = await browser.newPage();
-    const viewport = playwrightConfig.use?.viewport || { width: 1280, height: 720 };
-    await page.setViewportSize(viewport);
-    console.log(`[LOG] 📸 Navegando a ${fullUrl} para tomar captura y analizar patrones...`);
-    await page.goto(fullUrl, { waitUntil: 'networkidle' });
+  console.log(
+    `[LOG] 📝 No se encontró ${path.basename(fullDefinitionPath)}. Generando desde la IA...`,
+  );
+  const browser: Browser = await chromium.launch();
+  const page: Page = await browser.newPage();
+  const viewport = playwrightConfig.use?.viewport || { width: 1280, height: 720 };
+  await page.setViewportSize(viewport);
+  console.log(`[LOG] 📸 Navegando a ${fullUrl} para tomar captura y analizar patrones...`);
+  await page.goto(fullUrl, { waitUntil: 'networkidle' });
 
-    const patternDetector = new UIPatternDetector();
-    const detectedPatterns = await patternDetector.detectPatterns(page);
-    console.log(`[LOG] ✅ Patrones de UI detectados: ${detectedPatterns.map(p => p.type).join(', ') || 'Ninguno'}`);
+  const patternDetector = new UIPatternDetector();
+  const detectedPatterns = await patternDetector.detectPatterns(page);
+  console.log(
+    `[LOG] ✅ Patrones de UI detectados: ${detectedPatterns.map((p) => p.type).join(', ') || 'Ninguno'}`,
+  );
 
-    const screenshotBuffer = await page.screenshot({ fullPage: true });
-    await browser.close();
-    console.log("[LOG] ✅ Captura de pantalla tomada.");
+  const screenshotBuffer = await page.screenshot({ fullPage: true });
+  await browser.close();
+  console.log('[LOG] ✅ Captura de pantalla tomada.');
 
-    console.log("[LOG] 🤖 Enviando datos y contexto de UI a la IA...");
-    const testAssets = await llmService.getTestAssetsFromIA(testCase.userStory, screenshotBuffer.toString('base64'), detectedPatterns);
-    if (!testAssets) throw new Error("La IA no pudo generar los assets de prueba");
+  console.log('[LOG] 🤖 Enviando datos y contexto de UI a la IA...');
+  const testAssets = await llmService.getTestAssetsFromIA(
+    Array.isArray(testCase.userStory) ? testCase.userStory : [testCase.userStory],
+    screenshotBuffer.toString('base64'),
+    detectedPatterns,
+  );
+  if (!testAssets) throw new Error('La IA no pudo generar los assets de prueba');
 
-    return testAssets;
+  return testAssets;
 }
 
 async function main() {
-  console.log("🚀 Iniciando orquestador v11.0 (Logging en Tiempo Real)...");
+  console.log('🚀 Iniciando orquestador v11.0 (Logging en Tiempo Real)...');
 
-    // --- 1. INICIALIZACIÓN ---
+  // --- 1. INICIALIZACIÓN ---
   const learningSystem = new LearningSystem();
   const failureAnalyzer = new FailureAnalyzer();
   const llmService = getLlmService();
   const testCasePath = process.argv[2];
-  if (!testCasePath) { /* ... */ }
-  const testCase: any = JSON.parse(fs.readFileSync(testCasePath, 'utf-8'));
+  if (!testCasePath) {
+    console.error('Error: La ruta al archivo .testcase.json es obligatoria.');
+    process.exit(1);
+  }
+  const testCase: TestCase = JSON.parse(fs.readFileSync(testCasePath, 'utf-8'));
   console.log(`📋 Caso de prueba leído: "${testCase.name}"`);
 
   // --- MEJORA: Centralización y Organización de Rutas ---
@@ -80,57 +103,78 @@ async function main() {
   const maxRetries = 1;
 
   while (attempt <= maxRetries) {
-    if (attempt > 0) console.log(`\n🔄 Reintentando prueba después de auto-reparación (Intento ${attempt + 1})...`);
+    if (attempt > 0)
+      console.log(
+        `\n🔄 Reintentando prueba después de auto-reparación (Intento ${attempt + 1})...`,
+      );
 
-    let testAssets;
+    let testAssets: AIAsserts | undefined;
     const fullUrl = new URL(testCase.path, playwrightConfig.use!.baseURL!).toString();
 
     try {
       testAssets = await getOrGenerateAssets(testCase, testCasePath, llmService);
+      if (!testAssets) throw new Error('No se pudieron obtener los assets de prueba');
       testAssets = learningSystem.enhanceAIAssets(testAssets, fullUrl);
       fs.writeFileSync(fullDefinitionPath, JSON.stringify(testAssets, null, 2));
-      console.log("✨ Assets mejorados y guardados.");
+      console.log('✨ Assets mejorados y guardados.');
 
-      console.log("\n⚙️ Generando código...");
+      console.log('\n⚙️ Generando código...');
       execSync(`npm run generate:pom -- ${fullDefinitionPath}`, { stdio: 'inherit' });
-      execSync(`npm run generate:spec -- ${fullDefinitionPath} ${testCasePath}`, { stdio: 'inherit' });
+      execSync(`npm run generate:spec -- ${fullDefinitionPath} ${testCasePath}`, {
+        stdio: 'inherit',
+      });
 
       // sincronizándolo con la lógica de `generate-spec.ts`.
       const testFileName = testCase.name.replace(/\s+/g, '-').toLowerCase();
       const testFilePath = `tests/generated/${testFileName}.spec.ts`;
 
       // --- PASO 5: EJECUCIÓN DE LA PRUEBA (CON LOGS EN TIEMPO REAL) ---
-      console.log("\n🧪 Ejecutando prueba generada...");
+      console.log('\n🧪 Ejecutando prueba generada...');
       const testCommand = `npx playwright test ${testFilePath}`;
       console.log(`▶️ Ejecutando: ${testCommand}\n`);
       execSync(testCommand, { stdio: 'inherit' });
 
-      console.log("\n✅ ¡ÉXITO! La prueba generada por IA se ha ejecutado correctamente.");
-      await learningSystem.learnFromSuccess(testCase.name, testAssets, fullUrl);
+      console.log('\n✅ ¡ÉXITO! La prueba generada por IA se ha ejecutado correctamente.');
+      if (testAssets) {
+        await learningSystem.learnFromSuccess(testCase.name, testAssets, fullUrl);
+      }
       break;
-
-    } catch (error: any) {
-      console.error("\n❌ La prueba falló. Iniciando análisis inteligente...");
+    } catch (error) {
+      console.error('\n❌ La prueba falló. Iniciando análisis inteligente...');
 
       // Usar la misma lógica de nomenclatura para asegurar que se analiza el archivo correcto.
       const testFileNameForAnalysis = testCase.name.replace(/\s+/g, '-').toLowerCase();
       const testFilePathForAnalysis = `tests/generated/${testFileNameForAnalysis}.spec.ts`;
       // =======================================================================
 
-      let playwrightReport = `Error ejecutando el test: ${error.message}`;
+      let playwrightReport: string;
+      if (error instanceof Error) {
+        playwrightReport = `Error ejecutando el test: ${error.message}`;
+      } else {
+        playwrightReport = `Error ejecutando el test: ${String(error)}`;
+      }
 
       try {
         console.log(`[LOG] 🤫 Re-ejecutando para obtener reporte de fallo detallado...`);
         const reportCommand = `npx playwright test "${testFilePathForAnalysis}" --reporter=json`;
         execSync(reportCommand, { stdio: 'pipe', encoding: 'utf8' });
-      } catch (reportError: any) {
-        playwrightReport = reportError.stdout?.toString() || reportError.toString();
+      } catch (reportError) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const err = reportError as any;
+        playwrightReport = err.stdout?.toString() || String(reportError);
       }
 
-      const analysis = await failureAnalyzer.analyzeFailure(testFilePathForAnalysis, playwrightReport, fullDefinitionPath, fullUrl);
+      const analysis: FailureAnalysis = await failureAnalyzer.analyzeFailure(
+        testFilePathForAnalysis,
+        playwrightReport,
+        fullDefinitionPath,
+        fullUrl,
+      );
 
       console.log('🔬 Análisis del Fallo:', JSON.stringify(analysis, null, 2));
-      await learningSystem.learnFromFailure(testCase.name, analysis, testAssets, fullUrl);
+      if (testAssets) {
+        await learningSystem.learnFromFailure(testCase.name, analysis, testAssets, fullUrl);
+      }
 
       if (attempt < maxRetries) {
         const fixed = await failureAnalyzer.applyFixes(analysis, fullDefinitionPath);
@@ -140,7 +184,7 @@ async function main() {
         }
       }
 
-      console.log("⚠️ La auto-reparación no fue posible o ya se intentó. El fallo persiste.");
+      console.log('⚠️ La auto-reparación no fue posible o ya se intentó. El fallo persiste.');
       process.exit(1);
     }
   }

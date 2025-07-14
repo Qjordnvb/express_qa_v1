@@ -8,17 +8,24 @@ export class OpenAIService implements ILlmService {
   constructor() {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      throw new Error("La variable de entorno OPENAI_API_KEY no está definida.");
+      throw new Error('La variable de entorno OPENAI_API_KEY no está definida.');
     }
     this.openai = new OpenAI({ apiKey });
   }
 
-  async getTestAssetsFromIA(userStory: string[], imageBase64: string, detectedPatterns: any[] = []): Promise<any> {
-    console.log("Enviando historia de usuario estructurada (Gherkin), imagen y contexto de UI a Google Gemini...");
+  async getTestAssetsFromIA(
+    userStory: string[],
+    imageBase64: string,
+    detectedPatterns: any[] = [],
+  ): Promise<any> {
+    console.log(
+      'Enviando historia de usuario estructurada (Gherkin), imagen y contexto de UI a Google Gemini...',
+    );
 
     const userStoryAsString = userStory.join('\n');
 
-    const patternsContext = detectedPatterns.length > 0
+    const patternsContext =
+      detectedPatterns.length > 0
         ? `Adicionalmente, un análisis estructural de la página ha detectado los siguientes patrones de UI: ${JSON.stringify(detectedPatterns, null, 2)}. Usa este contexto para generar selectores y pasos más precisos y relevantes. Por ejemplo, si detectas un 'form', prioriza los selectores dentro de ese formulario.`
         : '';
 
@@ -84,21 +91,21 @@ export class OpenAIService implements ILlmService {
 
     try {
       const response = await this.openai.chat.completions.create({
-        model: "gpt-4.1",
+        model: 'gpt-4.1',
         max_tokens: 4096,
         temperature: 0.1, // Temperatura baja para respuestas predecibles
         // MEJORA 2: Forzamos la salida en formato JSON.
-        response_format: { type: "json_object" },
+        response_format: { type: 'json_object' },
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: 'system', content: systemPrompt },
           {
-            role: "user",
+            role: 'user',
             content: [
-              { type: "text", text: prompt },
+              { type: 'text', text: prompt },
               {
-                type: "image_url",
+                type: 'image_url',
                 image_url: {
-                  "url": `data:image/png;base64,${imageBase64}`
+                  url: `data:image/png;base64,${imageBase64}`,
                 },
               },
             ],
@@ -108,15 +115,14 @@ export class OpenAIService implements ILlmService {
 
       const responseText = response.choices[0].message.content;
       if (!responseText) {
-        throw new Error("La respuesta de la IA de OpenAI vino vacía.");
+        throw new Error('La respuesta de la IA de OpenAI vino vacía.');
       }
 
-      console.log("IA (OpenAI) ha respondido. Parseando JSON...");
+      console.log('IA (OpenAI) ha respondido. Parseando JSON...');
       return JSON.parse(responseText);
-
     } catch (error) {
-      console.error("Error al comunicarse con la API de OpenAI:", error);
-      throw new Error("No se pudo obtener los activos de prueba desde la IA.");
+      console.error('Error al comunicarse con la API de OpenAI:', error);
+      throw new Error('No se pudo obtener los activos de prueba desde la IA.');
     }
   }
 }

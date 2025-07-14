@@ -8,8 +8,11 @@ import { ProductDetailPage } from '../pages/ProductDetailPage';
 // import { CartPage } from '../pages/CartPage';
 
 test.describe('Search, Filter, Add to Cart, and Direct Checkout Flow', () => {
-
-  test('should allow searching, filtering, adding to cart, and proceeding to checkout from toast', async ({ page }: { page: Page }) => {
+  test('should allow searching, filtering, adding to cart, and proceeding to checkout from toast', async ({
+    page,
+  }: {
+    page: Page;
+  }) => {
     const searchTerm = 'MacBook';
     const productToSelect = 'MacBook Air'; // Asegúrate que este producto esté disponible después del filtro
 

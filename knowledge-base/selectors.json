@@ -18,7 +18,7 @@
       "getByRole:combobox"
     ],
     "failedSelectors": [],
-    "lastUpdated": "2025-06-26T19:55:22.791Z",
+    "lastUpdated": "2025-07-14T16:33:41.201Z",
     "successRate": 100
   },
   "https://google.com/-searchButton": {
@@ -28,7 +28,7 @@
       "getByText:Buscar con Google"
     ],
     "failedSelectors": [],
-    "lastUpdated": "2025-06-26T19:55:22.792Z",
+    "lastUpdated": "2025-07-14T16:33:41.201Z",
     "successRate": 100
   },
   "https://ecommerce-playground.lambdatest.io/index.php?route=account/login-emailInput": {
@@ -39,7 +39,7 @@
       "css:input[name='email']"
     ],
     "failedSelectors": [],
-    "lastUpdated": "2025-06-26T20:11:25.852Z",
+    "lastUpdated": "2025-07-02T22:03:12.110Z",
     "successRate": 100
   },
   "https://ecommerce-playground.lambdatest.io/index.php?route=account/login-passwordInput": {
@@ -50,7 +50,7 @@
       "css:input[name='password']"
     ],
     "failedSelectors": [],
-    "lastUpdated": "2025-06-26T20:11:25.852Z",
+    "lastUpdated": "2025-07-02T22:03:12.110Z",
     "successRate": 100
   },
   "https://ecommerce-playground.lambdatest.io/index.php?route=account/login-loginButton": {
@@ -64,7 +64,7 @@
     "failedSelectors": [
       "getByRole:button"
     ],
-    "lastUpdated": "2025-06-26T20:11:25.852Z",
+    "lastUpdated": "2025-07-02T22:03:12.110Z",
     "successRate": 75
   },
   "https://ecommerce-playground.lambdatest.io/index.php?route=account/login-errorMessage": {
@@ -273,7 +273,7 @@
     "elementDescription": "searchResultsTitleVisible",
     "workingSelectors": [],
     "failedSelectors": [],
-    "lastUpdated": "2025-06-26T19:21:07.681Z",
+    "lastUpdated": "2025-07-01T19:38:53.026Z",
     "successRate": 100
   },
   "https://google.com/-searchResultsVisible": {
@@ -281,7 +281,7 @@
     "elementDescription": "searchResultsVisible",
     "workingSelectors": [],
     "failedSelectors": [],
-    "lastUpdated": "2025-06-26T19:22:02.747Z",
+    "lastUpdated": "2025-07-02T21:59:43.511Z",
     "successRate": 100
   },
   "https://google.com/-luckyButton": {
@@ -318,6 +318,30 @@
     "workingSelectors": [],
     "failedSelectors": [],
     "lastUpdated": "2025-06-26T21:06:41.100Z",
+    "successRate": 100
+  },
+  "https://google.com/-resultsContainerVisible": {
+    "url": "https://google.com/",
+    "elementDescription": "resultsContainerVisible",
+    "workingSelectors": [],
+    "failedSelectors": [],
+    "lastUpdated": "2025-07-01T19:11:57.761Z",
+    "successRate": 100
+  },
+  "https://google.com/-searchResultsContainerVisible": {
+    "url": "https://google.com/",
+    "elementDescription": "searchResultsContainerVisible",
+    "workingSelectors": [],
+    "failedSelectors": [],
+    "lastUpdated": "2025-07-01T19:18:31.300Z",
+    "successRate": 100
+  },
+  "https://google.com/-searchResultsHeaderVisible": {
+    "url": "https://google.com/",
+    "elementDescription": "searchResultsHeaderVisible",
+    "workingSelectors": [],
+    "failedSelectors": [],
+    "lastUpdated": "2025-07-01T19:37:53.110Z",
     "successRate": 100
   }
 }

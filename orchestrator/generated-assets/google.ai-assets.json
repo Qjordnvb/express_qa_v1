@@ -1,0 +1,112 @@
+{
+  "pageObject": {
+    "className": "HomePage",
+    "locators": [
+      {
+        "name": "searchInput",
+        "elementType": "input",
+        "actions": [
+          "fill",
+          "clear",
+          "getValue"
+        ],
+        "selectors": [
+          {
+            "type": "getByRole",
+            "value": "combobox"
+          },
+          {
+            "type": "getByRole",
+            "value": "textbox",
+            "options": {
+              "name": "Buscar"
+            }
+          },
+          {
+            "type": "css",
+            "value": "input[name='q']"
+          },
+          {
+            "type": "xpath",
+            "value": "//input[@name='q']"
+          }
+        ],
+        "waitBefore": "visible",
+        "validateAfter": true,
+        "metadata": {
+          "enhanced": true,
+          "confidence": 100,
+          "lastSuccess": "2025-07-14T15:49:05.371Z"
+        }
+      },
+      {
+        "name": "searchButton",
+        "elementType": "button",
+        "actions": [
+          "click"
+        ],
+        "selectors": [
+          {
+            "type": "getByText",
+            "value": "Buscar con Google"
+          },
+          {
+            "type": "getByRole",
+            "value": "button",
+            "options": {
+              "name": "Buscar con Google"
+            }
+          },
+          {
+            "type": "css",
+            "value": "input[name='btnK']"
+          },
+          {
+            "type": "xpath",
+            "value": "//input[@name='btnK']"
+          }
+        ],
+        "waitBefore": "enabled",
+        "validateAfter": true,
+        "metadata": {
+          "enhanced": true,
+          "confidence": 100,
+          "lastSuccess": "2025-07-14T15:49:05.371Z"
+        }
+      }
+    ]
+  },
+  "testSteps": [
+    {
+      "page": "HomePage",
+      "action": "navigate",
+      "params": [
+        "https://www.google.com"
+      ],
+      "waitFor": {
+        "element": "searchInput",
+        "state": "visible"
+      }
+    },
+    {
+      "page": "HomePage",
+      "action": "fillSearchInput",
+      "params": [
+        "Playwright"
+      ],
+      "waitFor": {
+        "element": "searchInput",
+        "state": "visible"
+      }
+    },
+    {
+      "page": "HomePage",
+      "action": "clickSearchButton",
+      "params": [],
+      "assert": {
+        "type": "urlContains",
+        "expected": "search?q=Playwright"
+      }
+    }
+  ]
+}
