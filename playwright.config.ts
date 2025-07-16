@@ -32,7 +32,7 @@ export default defineConfig({
   },
   use: {
     baseURL: 'https://ecommerce-playground.lambdatest.io/',
-    trace: 'retain-on-failure',
+    trace: 'on-first-retry',
     viewport: { width: 1920, height: 1080 },
     ignoreHTTPSErrors: true,
     userAgent:
