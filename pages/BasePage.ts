@@ -42,42 +42,42 @@ export class BasePage {
 
     for (let i = 0; i < locators.length; i++) {
       const locator = locators[i];
+      const startTime = Date.now(); // Movido aquí para medir cada intento individualmente
+
       try {
-        const count = await locator.count();
-        attempts.push({
-          index: i,
+        // Primero, esperamos a que al menos un elemento que coincida sea visible.
+        // Usamos waitFor para darle al elemento la oportunidad de aparecer.
+        await locator.first().waitFor({ state: 'visible', timeout: 5000 }); // Un timeout corto para cada intento.
+
+        // Si la línea anterior no lanzó un error, significa que el elemento es visible.
+        const firstElement = locator.first();
+        const duration = Date.now() - startTime;
+
+        // Log del éxito
+        this.log('findElement', {
+          description,
+          // Usamos locator.toString() para obtener una representación del selector.
           selector: locator.toString(),
-          count,
-          success: count > 0,
+          selectorIndex: i,
+          duration,
+          found: true,
         });
 
-        if (count > 0) {
-          const duration = Date.now() - startTime;
-          this.log('findElement', {
-            description,
-            selectorIndex: i,
-            totalSelectors: locators.length,
-            duration,
-            found: true,
-          });
+        // Devolvemos el elemento encontrado y salimos del bucle.
+        return firstElement;
 
-          if (count > 1) {
-            console.warn(
-              `⚠️ Selector encontró ${count} elementos para ${description}. Usando el primero.`,
-            );
-          }
-          return locator.first();
-        }
       } catch (e) {
-        const error = e instanceof Error ? e.message : String(e);
+        // Si waitFor falla (el elemento no es visible en el tiempo asignado),
+        // lo registramos y continuamos con el siguiente selector.
         attempts.push({
           index: i,
           selector: locator.toString(),
-          error,
+          success: false,
+          error: 'Elemento no encontrado o no visible en 5s',
         });
-        continue;
       }
     }
+
 
     // Si ningún selector funcionó, guardar información de debug
     this.log('findElementFailed', {

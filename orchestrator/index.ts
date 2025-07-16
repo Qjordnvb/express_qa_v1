@@ -8,12 +8,7 @@ import { chromium, Page, Browser } from '@playwright/test';
 import { getLlmService } from './llm-service';
 import { ILlmService } from './llms/ILlmService';
 import { LearningSystem } from './learning-system';
-import {
-  FailureAnalyzer,
-  AIAsserts,
-  FailureAnalysis,
-
-} from './failure-analyzer';
+import { FailureAnalyzer, AIAsserts, FailureAnalysis } from './failure-analyzer';
 import { UIPatternDetector } from './ui-pattern-detector';
 import playwrightConfig from '../playwright.config';
 
@@ -43,10 +38,21 @@ async function getOrGenerateAssets(
   console.log(
     `[LOG] 📝 No se encontró ${path.basename(fullDefinitionPath)}. Generando desde la IA...`,
   );
-  const browser: Browser = await chromium.launch();
-  const page: Page = await browser.newPage();
-  const viewport = playwrightConfig.use?.viewport || { width: 1280, height: 720 };
-  await page.setViewportSize(viewport);
+  const browser = await chromium.launch({ headless: false });
+  const context = await browser.newContext({
+    viewport: { width: 1920, height: 1080 },
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  });
+  const page = await context.newPage();
+
+
+  // Simula acciones humanas mínimas
+  await page.mouse.move(100, 100);
+  await page.waitForTimeout(800);
+
+
+  const viewport = playwrightConfig.use?.viewport || { width: 1920, height: 1080};
+  await page.setViewportSize({ width: 1920, height: 1080 });
   console.log(`[LOG] 📸 Navegando a ${fullUrl} para tomar captura y analizar patrones...`);
   await page.goto(fullUrl, { waitUntil: 'networkidle' });
 
@@ -109,7 +115,11 @@ async function main() {
       );
 
     let testAssets: AIAsserts | undefined;
-    const fullUrl = new URL(testCase.path, playwrightConfig.use!.baseURL!).toString();
+
+    if (!playwrightConfig.use || !playwrightConfig.use.baseURL) {
+      throw new Error('baseURL no está definida en playwright.config.ts');
+    }
+    const fullUrl = new URL(testCase.path, playwrightConfig.use.baseURL).toString();
 
     try {
       testAssets = await getOrGenerateAssets(testCase, testCasePath, llmService);

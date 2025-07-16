@@ -1,6 +1,6 @@
 {
   "pageObject": {
-    "className": "HomePage",
+    "className": "GoogleHomePage",
     "locators": [
       {
         "name": "searchInput",
@@ -19,12 +19,12 @@
             "type": "getByRole",
             "value": "textbox",
             "options": {
-              "name": "Buscar"
+              "name": "Search"
             }
           },
           {
             "type": "css",
-            "value": "input[name='q']"
+            "value": "[name='q']"
           },
           {
             "type": "xpath",
@@ -36,7 +36,7 @@
         "metadata": {
           "enhanced": true,
           "confidence": 100,
-          "lastSuccess": "2025-07-14T15:49:05.371Z"
+          "lastSuccess": "2025-07-16T16:35:27.302Z"
         }
       },
       {
@@ -54,12 +54,12 @@
             "type": "getByRole",
             "value": "button",
             "options": {
-              "name": "Buscar con Google"
+              "name": "Google Search"
             }
           },
           {
             "type": "css",
-            "value": "input[name='btnK']"
+            "value": "[name='btnK']"
           },
           {
             "type": "xpath",
@@ -71,14 +71,60 @@
         "metadata": {
           "enhanced": true,
           "confidence": 100,
-          "lastSuccess": "2025-07-14T15:49:05.371Z"
+          "lastSuccess": "2025-07-16T16:35:27.302Z"
         }
+      },
+      {
+        "name": "searchButtonI",
+        "elementType": "button",
+        "actions": [
+          "click"
+        ],
+        "selectors": [
+          {
+            "type": "getByRole",
+            "value": "button",
+            "options": {
+              "name": "Google Search"
+            }
+          },
+          {
+            "type": "css",
+            "value": "[name='btnI']"
+          },
+          {
+            "type": "xpath",
+            "value": "//input[@name='btnI']"
+          }
+        ],
+        "waitBefore": "enabled",
+        "validateAfter": true
+      },
+      {
+        "name": "searchResults",
+        "elementType": "text",
+        "actions": [],
+        "selectors": [
+          {
+            "type": "css",
+            "value": "#search"
+          },
+          {
+            "type": "xpath",
+            "value": "//div[@id='search']"
+          },
+          {
+            "type": "getByRole",
+            "value": "heading"
+          }
+        ],
+        "waitBefore": "visible"
       }
     ]
   },
   "testSteps": [
     {
-      "page": "HomePage",
+      "page": "GoogleHomePage",
       "action": "navigate",
       "params": [
         "https://www.google.com"
@@ -89,7 +135,7 @@
       }
     },
     {
-      "page": "HomePage",
+      "page": "GoogleHomePage",
       "action": "fillSearchInput",
       "params": [
         "Playwright"
@@ -100,12 +146,16 @@
       }
     },
     {
-      "page": "HomePage",
+      "page": "GoogleHomePage",
       "action": "clickSearchButton",
       "params": [],
+      "waitFor": {
+        "element": "searchResults",
+        "state": "visible"
+      },
       "assert": {
-        "type": "urlContains",
-        "expected": "search?q=Playwright"
+        "type": "textVisible",
+        "expected": "Playwright"
       }
     }
   ]

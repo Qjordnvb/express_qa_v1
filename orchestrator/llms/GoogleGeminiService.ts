@@ -57,7 +57,6 @@ export class GoogleGeminiService implements ILlmService {
           )}. Usa este contexto para generar selectores y pasos más precisos y relevantes. Por ejemplo, si detectas un 'form', prioriza los selectores dentro de ese formulario.`
         : '';
 
-
     // El prompt que ya perfeccionamos
     const prompt = `
 
@@ -97,6 +96,15 @@ export class GoogleGeminiService implements ILlmService {
       * Incluir "waitFor" cuando el elemento pueda no estar disponible inmediatamente
       * Incluir "assert" para validaciones importantes
 
+   REGLA DE ORO PARA NOMBRES DE CLASES:
+   - El nombre de la clase Page Object DEBE ser específico al contexto de la prueba.
+   - Usa el nombre del sitio web o la funcionalidad principal como prefijo.
+   - Por ejemplo:
+   - Para google.com, la clase debe ser GoogleHomePage.
+   - Para una tienda online, EcommerceHomePage.
+   - Para una página de login, AuthLoginPage.
+   - NUNCA uses el nombre genérico "HomePage" para dos sitios web diferentes. Sé siempre específico.
+
    REGLAS DE GENERACIÓN DE NOMBRES:
    - Para inputs/textareas: "fill[NombreElemento]" (ej. "fillEmailInput", "fillPasswordField")
    - Para botones: "click[NombreElemento]" (ej. "clickLoginButton", "clickSubmitButton")
@@ -104,7 +112,6 @@ export class GoogleGeminiService implements ILlmService {
    - Para selects: "select[NombreElemento]" (ej. "selectCountryDropdown")
    - Para elementos de solo lectura: "waitFor[NombreElemento]Visible", "get[NombreElemento]Text", "assert[NombreElemento]Contains"
    - Para links: "click[NombreElemento]Link"
-
 
    REGLAS PARA ELEMENTOS SEGÚN TIPO:
    - **inputs** (elementType: "input"):
@@ -133,10 +140,21 @@ export class GoogleGeminiService implements ILlmService {
    - Antes de la primera interacción con cualquier elemento crítico
 
    CUÁNDO USAR assert:
-   - Después de hacer clic en botones de navegación (validar URL)
-   - Para verificar mensajes de error o éxito
+   - Después de hacer clic en botones de navegación (validar URL con "urlContains")
+   - Para verificar mensajes de error o éxito (validar texto con "textVisible")
    - Para validar que un valor se ingresó correctamente
    - Para confirmar el estado final de una acción
+
+   REGLA DE ASERCIÓN DE TEXTO:
+   - Si la historia de usuario pide validar que un texto es visible en la página (ej. "la página de resultados debe mostrar..."), usa el tipo de aserción "textVisible".
+
+   MAPEO DE INTENCIONES A ASERCIONES (MUY IMPORTANTE):
+   - SI la historia dice "...URL debe contener [texto]...", ENTONCES usa 'assert: { "type": "urlContains", "expected": "[texto]" }'.
+   - SI la historia dice "...debe mostrar el texto [texto]...", ENTONCES usa 'assert: { "type": "textVisible", "expected": "[texto]" }'.
+   - SI la historia dice "...debe ser visible el elemento [nombre]...", ENTONCES usa 'waitFor: { "element": "[nombre]", "state": "visible" }' sin un 'assert'.
+
+   EJEMPLO DE ASERCIÓN "textVisible":
+   "assert": { "type": "textVisible", "expected": "Texto a verificar" }
 
    REQUISITOS ESTRICTOS:
    - El JSON debe ser válido (comas correctas, comillas dobles)

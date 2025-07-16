@@ -1,11 +1,12 @@
 {
   "name": "Search and Filter Flow",
   "path": "/index.php?route=common/home",
-  "userStory": [
+ "userStory": [
     "DADO que estoy en la página de inicio",
-    "CUANDO busco el producto 'MacBook' en la barra de busqueda",
+    "CUANDO busco el producto 'MacBook'",
     "Y hago clic en el botón de búsqueda",
-    "Y hago clic en el filtro de casilla de verificación con el texto 'In Stock'",
+    "ENTONCES debo ver la lista de resultados de búsqueda",
+    "Y activo el filtro de stock seleccionando el checkbox cuyo label tiene el atributo for='mz-fss-0--1' y el input tiene id='mz-fss-0--1'",
     "ENTONCES la lista de productos debe actualizarse"
   ]
 }

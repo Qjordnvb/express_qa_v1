@@ -18,7 +18,7 @@
       "getByRole:combobox"
     ],
     "failedSelectors": [],
-    "lastUpdated": "2025-07-14T16:33:41.201Z",
+    "lastUpdated": "2025-07-16T16:48:01.224Z",
     "successRate": 100
   },
   "https://google.com/-searchButton": {
@@ -28,7 +28,7 @@
       "getByText:Buscar con Google"
     ],
     "failedSelectors": [],
-    "lastUpdated": "2025-07-14T16:33:41.201Z",
+    "lastUpdated": "2025-07-16T16:48:01.224Z",
     "successRate": 100
   },
   "https://ecommerce-playground.lambdatest.io/index.php?route=account/login-emailInput": {
@@ -39,7 +39,7 @@
       "css:input[name='email']"
     ],
     "failedSelectors": [],
-    "lastUpdated": "2025-07-02T22:03:12.110Z",
+    "lastUpdated": "2025-07-16T16:43:48.840Z",
     "successRate": 100
   },
   "https://ecommerce-playground.lambdatest.io/index.php?route=account/login-passwordInput": {
@@ -50,7 +50,7 @@
       "css:input[name='password']"
     ],
     "failedSelectors": [],
-    "lastUpdated": "2025-07-02T22:03:12.110Z",
+    "lastUpdated": "2025-07-16T16:43:48.840Z",
     "successRate": 100
   },
   "https://ecommerce-playground.lambdatest.io/index.php?route=account/login-loginButton": {
@@ -64,7 +64,7 @@
     "failedSelectors": [
       "getByRole:button"
     ],
-    "lastUpdated": "2025-07-02T22:03:12.110Z",
+    "lastUpdated": "2025-07-16T16:43:48.840Z",
     "successRate": 75
   },
   "https://ecommerce-playground.lambdatest.io/index.php?route=account/login-errorMessage": {
@@ -74,7 +74,7 @@
       "css:.alert-danger"
     ],
     "failedSelectors": [],
-    "lastUpdated": "2025-06-26T20:11:25.852Z",
+    "lastUpdated": "2025-07-16T16:43:48.840Z",
     "successRate": 100
   },
   "https://ecommerce-playground.lambdatest.io/index.php?route=common/home-searchInput": {
@@ -86,7 +86,7 @@
       "locator:input[name='search']"
     ],
     "failedSelectors": [],
-    "lastUpdated": "2025-06-26T03:35:02.533Z",
+    "lastUpdated": "2025-07-16T16:46:00.247Z",
     "successRate": 100
   },
   "https://ecommerce-playground.lambdatest.io/index.php?route=common/home-searchButton": {
@@ -97,7 +97,7 @@
       "locator:[type='submit']"
     ],
     "failedSelectors": [],
-    "lastUpdated": "2025-06-26T03:35:02.533Z",
+    "lastUpdated": "2025-07-16T16:46:00.247Z",
     "successRate": 100
   },
   "https://ecommerce-playground.lambdatest.io/index.php?route=common/home-inStockFilter": {
@@ -117,7 +117,7 @@
       "css:[name=\"q\"]"
     ],
     "failedSelectors": [],
-    "lastUpdated": "2025-06-24T21:13:53.647Z",
+    "lastUpdated": "2025-07-14T19:20:09.024Z",
     "successRate": 100
   },
   "https://www.google.com/-searchButton": {
@@ -127,7 +127,7 @@
       "css:[name=\"btnK\"]"
     ],
     "failedSelectors": [],
-    "lastUpdated": "2025-06-24T21:13:53.647Z",
+    "lastUpdated": "2025-07-14T19:20:09.024Z",
     "successRate": 100
   },
   "https://www.google.com/index.php?route=account/login-emailInputVisible": {
@@ -291,7 +291,7 @@
       "css:[name=\"btnI\"]"
     ],
     "failedSelectors": [],
-    "lastUpdated": "2025-06-26T19:38:06.633Z",
+    "lastUpdated": "2025-07-14T19:34:17.359Z",
     "successRate": 100
   },
   "https://google.com/index.php?route=common/home-searchInput": {
@@ -342,6 +342,46 @@
     "workingSelectors": [],
     "failedSelectors": [],
     "lastUpdated": "2025-07-01T19:37:53.110Z",
+    "successRate": 100
+  },
+  "https://www.google.com/-luckyButton": {
+    "url": "https://www.google.com/",
+    "elementDescription": "luckyButton",
+    "workingSelectors": [
+      "getByRole:button{\"name\":\"Voy a tener suerte\"}"
+    ],
+    "failedSelectors": [],
+    "lastUpdated": "2025-07-14T19:20:09.024Z",
+    "successRate": 100
+  },
+  "https://google.com/-searchResultsText": {
+    "url": "https://google.com/",
+    "elementDescription": "searchResultsText",
+    "workingSelectors": [
+      "css:#search"
+    ],
+    "failedSelectors": [],
+    "lastUpdated": "2025-07-16T16:35:27.303Z",
+    "successRate": 100
+  },
+  "https://google.com/-searchButtonI": {
+    "url": "https://google.com/",
+    "elementDescription": "searchButtonI",
+    "workingSelectors": [
+      "getByRole:button{\"name\":\"Google Search\"}"
+    ],
+    "failedSelectors": [],
+    "lastUpdated": "2025-07-16T16:48:01.224Z",
+    "successRate": 100
+  },
+  "https://google.com/-searchResults": {
+    "url": "https://google.com/",
+    "elementDescription": "searchResults",
+    "workingSelectors": [
+      "css:#search"
+    ],
+    "failedSelectors": [],
+    "lastUpdated": "2025-07-16T16:48:01.224Z",
     "successRate": 100
   }
 }

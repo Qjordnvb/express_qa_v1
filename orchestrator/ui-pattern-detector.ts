@@ -55,7 +55,7 @@ export class UIPatternDetector {
     for (const form of forms) {
       const inputs = await form.$$('input, textarea, select');
       const buttons = await form.$$('button[type="submit"], input[type="submit"]');
-      
+
       if (inputs.length > 0 && buttons.length > 0) {
         const elements: PatternElement[] = [];
 

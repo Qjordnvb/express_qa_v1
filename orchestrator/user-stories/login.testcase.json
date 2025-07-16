@@ -6,6 +6,6 @@
     "CUANDO ingreso mi email 'jordanvillarreal1994@gmail.com'",
     "Y ingreso mi password '12345678'",
     "Y hago clic en el botón 'Login'",
-    "ENTONCES debo ser redirigido a la página de mi cuenta"
+    "ENTONCES debo ser redirigido a /account"
   ]
 }

@@ -32,27 +32,40 @@ export default defineConfig({
   },
   use: {
     baseURL: 'https://google.com/',
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
     viewport: { width: 1920, height: 1080 },
     ignoreHTTPSErrors: true,
+    userAgent:
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36',
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
   },
 
   /* Configure projects for major browsers */
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: 'Google Chrome',
+      use: {
+           ...devices['Desktop Chrome'],
+           channel: 'chrome',
+           viewport: { width: 1920, height: 1080 }
+      }
     },
-
     {
       name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
+      use: {
+        ...devices['Desktop Firefox'],
+        channel: 'firefox',
+        viewport: { width: 1920, height: 1080 } },
     },
 
     {
       name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
+      use: {
+        ...devices['Desktop Safari'],
+        channel: 'webkit',
+        viewport: { width: 1920, height: 1080 }
+      }
+
     },
 
     /* Test against mobile viewports. */
