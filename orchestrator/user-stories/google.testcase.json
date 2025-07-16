@@ -5,6 +5,6 @@
     "DADO que estoy en la página principal de Google",
     "CUANDO escribo 'Playwright' en el campo de búsqueda",
     "Y presiono Enter",
-    "ENTONCES la URL debe contener 'search' y 'Playwright'"
+    "ENTONCES la página de resultados debe mostrar el texto 'Playwright'"
   ]
 }

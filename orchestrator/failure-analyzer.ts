@@ -232,7 +232,9 @@ export class FailureAnalyzer {
 
     const elementName = locatorNameMatch[1].charAt(0).toLowerCase() + locatorNameMatch[1].slice(1);
     const aiAssets: AIAsserts = JSON.parse(fs.readFileSync(aiAssetsPath, 'utf8'));
-    const locatorToFix = aiAssets.pageObject.locators.find((loc: Locator) => loc.name === elementName);
+    const locatorToFix = aiAssets.pageObject.locators.find(
+      (loc: Locator) => loc.name === elementName,
+    );
 
     if (!locatorToFix) {
       console.log(`⚠️ No se pudo encontrar el locator llamado "${elementName}" en los assets.`);
@@ -270,7 +272,8 @@ export class FailureAnalyzer {
 
       // Evitar añadir un selector que ya existe.
       const selectorExists = locatorToFix.selectors.some(
-        (s: { type: string; value: string }) => s.type === newSelector.type && s.value === newSelector.value,
+        (s: { type: string; value: string }) =>
+          s.type === newSelector.type && s.value === newSelector.value,
       );
 
       if (!selectorExists) {

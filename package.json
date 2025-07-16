@@ -27,7 +27,7 @@
     "eslint-config-prettier": "^8.10.0",
     "prettier": "^3.6.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.3"
+    "typescript": "^5.1.6"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.54.0",
