@@ -5,9 +5,7 @@
     {
       "url": "https://google.com/",
       "elementDescription": "noThanksButton",
-      "workingSelectors": [
-        "getByText:No, gracias"
-      ],
+      "workingSelectors": ["getByText:No, gracias"],
       "failedSelectors": [],
       "lastUpdated": "2025-06-16T02:40:54.794Z",
       "successRate": 100
@@ -15,9 +13,7 @@
     {
       "url": "https://google.com/",
       "elementDescription": "searchInput",
-      "workingSelectors": [
-        "getByRole:combobox"
-      ],
+      "workingSelectors": ["getByRole:combobox"],
       "failedSelectors": [],
       "lastUpdated": "2025-06-16T02:40:54.794Z",
       "successRate": 100
@@ -25,9 +21,7 @@
     {
       "url": "https://google.com/",
       "elementDescription": "searchButton",
-      "workingSelectors": [
-        "getByText:Buscar con Google"
-      ],
+      "workingSelectors": ["getByText:Buscar con Google"],
       "failedSelectors": [],
       "lastUpdated": "2025-06-16T02:40:54.794Z",
       "successRate": 100
@@ -35,10 +29,7 @@
     {
       "url": "https://ecommerce-playground.lambdatest.io/index.php?route=account/login",
       "elementDescription": "emailInput",
-      "workingSelectors": [
-        "getByLabel:E-Mail Address",
-        "css:input[name='email']"
-      ],
+      "workingSelectors": ["getByLabel:E-Mail Address", "css:input[name='email']"],
       "failedSelectors": [],
       "lastUpdated": "2025-06-16T02:45:47.900Z",
       "successRate": 100
@@ -46,10 +37,7 @@
     {
       "url": "https://ecommerce-playground.lambdatest.io/index.php?route=account/login",
       "elementDescription": "passwordInput",
-      "workingSelectors": [
-        "getByLabel:Password",
-        "css:input[name='password']"
-      ],
+      "workingSelectors": ["getByLabel:Password", "css:input[name='password']"],
       "failedSelectors": [],
       "lastUpdated": "2025-06-16T02:45:47.900Z",
       "successRate": 100
@@ -57,10 +45,7 @@
     {
       "url": "https://ecommerce-playground.lambdatest.io/index.php?route=account/login",
       "elementDescription": "loginButton",
-      "workingSelectors": [
-        "getByRole:button",
-        "css:button[type='submit']"
-      ],
+      "workingSelectors": ["getByRole:button", "css:button[type='submit']"],
       "failedSelectors": [],
       "lastUpdated": "2025-06-16T02:45:47.900Z",
       "successRate": 100
@@ -68,9 +53,7 @@
     {
       "url": "https://ecommerce-playground.lambdatest.io/index.php?route=account/login",
       "elementDescription": "errorMessage",
-      "workingSelectors": [
-        "css:.alert-danger"
-      ],
+      "workingSelectors": ["css:.alert-danger"],
       "failedSelectors": [],
       "lastUpdated": "2025-06-16T02:45:47.900Z",
       "successRate": 100
@@ -78,10 +61,7 @@
     {
       "url": "https://ecommerce-playground.lambdatest.io/index.php?route=common/home",
       "elementDescription": "searchInput",
-      "workingSelectors": [
-        "getByRole:textbox",
-        "locator:input[name='search']"
-      ],
+      "workingSelectors": ["getByRole:textbox", "locator:input[name='search']"],
       "failedSelectors": [],
       "lastUpdated": "2025-06-16T03:01:40.360Z",
       "successRate": 100
@@ -89,9 +69,7 @@
     {
       "url": "https://ecommerce-playground.lambdatest.io/index.php?route=common/home",
       "elementDescription": "searchButton",
-      "workingSelectors": [
-        "locator:[type='submit']"
-      ],
+      "workingSelectors": ["locator:[type='submit']"],
       "failedSelectors": [],
       "lastUpdated": "2025-06-16T03:01:40.360Z",
       "successRate": 100
@@ -99,9 +77,7 @@
     {
       "url": "https://ecommerce-playground.lambdatest.io/index.php?route=common/home",
       "elementDescription": "inStockFilter",
-      "workingSelectors": [
-        "locator:label[for='mz-fss-0--1']"
-      ],
+      "workingSelectors": ["locator:label[for='mz-fss-0--1']"],
       "failedSelectors": [],
       "lastUpdated": "2025-06-16T03:01:40.360Z",
       "successRate": 100

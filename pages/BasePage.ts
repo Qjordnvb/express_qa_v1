@@ -3,8 +3,24 @@ import { type Page, type Locator } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 
+// --- Interfaces para el Logging y Debugging ---
+
+interface ActionLog {
+  action: string;
+  details: Record<string, unknown>;
+  timestamp: string;
+}
+
+interface AttemptLog {
+  index: number;
+  selector: string;
+  count?: number;
+  success?: boolean;
+  error?: string;
+}
+
 export class BasePage {
-  private actionLog: any[] = [];
+  private actionLog: ActionLog[] = [];
 
   constructor(protected page: Page) {}
 
@@ -22,49 +38,52 @@ export class BasePage {
    */
   async findSmartly(locators: Locator[], description: string): Promise<Locator> {
     const startTime = Date.now();
-    const attempts: any[] = [];
+    const attempts: AttemptLog[] = [];
 
     for (let i = 0; i < locators.length; i++) {
       const locator = locators[i];
+      const startTime = Date.now(); // Movido aquí para medir cada intento individualmente
+
       try {
-        const count = await locator.count();
+        // Primero, esperamos a que al menos un elemento que coincida sea visible.
+        // Usamos waitFor para darle al elemento la oportunidad de aparecer.
+        await locator.first().waitFor({ state: 'visible', timeout: 5000 }); // Un timeout corto para cada intento.
+
+        // Si la línea anterior no lanzó un error, significa que el elemento es visible.
+        const firstElement = locator.first();
+        const duration = Date.now() - startTime;
+
+        // Log del éxito
+        this.log('findElement', {
+          description,
+          // Usamos locator.toString() para obtener una representación del selector.
+          selector: locator.toString(),
+          selectorIndex: i,
+          duration,
+          found: true,
+        });
+
+        // Devolvemos el elemento encontrado y salimos del bucle.
+        return firstElement;
+
+      } catch (e) {
+        // Si waitFor falla (el elemento no es visible en el tiempo asignado),
+        // lo registramos y continuamos con el siguiente selector.
         attempts.push({
           index: i,
           selector: locator.toString(),
-          count,
-          success: count > 0
+          success: false,
+          error: 'Elemento no encontrado o no visible en 5s',
         });
-
-        if (count > 0) {
-          const duration = Date.now() - startTime;
-          this.log('findElement', {
-            description,
-            selectorIndex: i,
-            totalSelectors: locators.length,
-            duration,
-            found: true
-          });
-
-          if (count > 1) {
-            console.warn(`⚠️ Selector encontró ${count} elementos para ${description}. Usando el primero.`);
-          }
-          return locator.first();
-        }
-      } catch (e: any) {
-        attempts.push({
-          index: i,
-          selector: locator.toString(),
-          error: e.message
-        });
-        continue;
       }
     }
+
 
     // Si ningún selector funcionó, guardar información de debug
     this.log('findElementFailed', {
       description,
       attempts,
-      duration: Date.now() - startTime
+      duration: Date.now() - startTime,
     });
 
     // Intentar esperar por el primero
@@ -75,14 +94,16 @@ export class BasePage {
     } catch (e) {
       // Guardar información detallada del fallo
       await this.saveDebugInfo(description, attempts);
-      throw new Error(`No se pudo encontrar el elemento: ${description}. Probados ${locators.length} selectores.`);
+      throw new Error(
+        `No se pudo encontrar el elemento: ${description}. Probados ${locators.length} selectores.`,
+      );
     }
   }
 
   /**
    * Guarda información de debug cuando falla un elemento
    */
-  private async saveDebugInfo(description: string, attempts: any[]): Promise<void> {
+  private async saveDebugInfo(description: string, attempts: AttemptLog[]): Promise<void> {
     const debugDir = 'test-results/debug';
     if (!fs.existsSync(debugDir)) {
       fs.mkdirSync(debugDir, { recursive: true });
@@ -101,7 +122,7 @@ export class BasePage {
       htmlSnippet: await this.page.evaluate(() => {
         const body = document.body;
         return body ? body.innerHTML.substring(0, 1000) : 'No body found';
-      })
+      }),
     };
 
     fs.writeFileSync(debugFile, JSON.stringify(debugInfo, null, 2));
@@ -111,11 +132,11 @@ export class BasePage {
   /**
    * Registra todas las acciones para debugging
    */
-  private log(action: string, details: any): void {
+  private log(action: string, details: Record<string, unknown>): void {
     this.actionLog.push({
       action,
       details,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 
@@ -133,7 +154,7 @@ export class BasePage {
   async takeScreenshot(name: string): Promise<void> {
     await this.page.screenshot({
       path: `test-results/${name}-${Date.now()}.png`,
-      fullPage: true
+      fullPage: true,
     });
   }
 
@@ -149,7 +170,7 @@ export class BasePage {
       'button:has-text("Aceptar")',
       '.close-button',
       '[class*="close"]',
-      '[class*="dismiss"]'
+      '[class*="dismiss"]',
     ];
 
     for (const selector of popupSelectors) {
@@ -171,7 +192,30 @@ export class BasePage {
   /**
    * Obtiene el log de acciones para análisis
    */
-  getActionLog(): any[] {
+  getActionLog(): ActionLog[] {
     return this.actionLog;
+  }
+
+  /**
+   * Valida que al menos un selector funcione para cada elemento dado
+   */
+  public static async validateAllSelectors(
+    page: Page,
+    elements: { description: string; locators: Locator[] }[],
+  ): Promise<void> {
+    for (const { description, locators } of elements) {
+      let found = false;
+      for (const locator of locators) {
+        if ((await locator.count()) > 0) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        console.warn(`❌ Ningún selector funcionó para: ${description}`);
+      } else {
+        console.log(`✅ Al menos un selector funcionó para: ${description}`);
+      }
+    }
   }
 }

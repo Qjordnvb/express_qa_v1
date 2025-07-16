@@ -4,16 +4,17 @@ import * as path from 'path';
 
 // --- Definición de Interfaces ---
 interface TestStep {
+  page: string;
   action: string;
-  params: string[];
+  params: unknown[];
   waitFor?: {
     element: string;
     state: string;
   };
   assert?: {
     type: string;
-    expected?: string;
-    expectedOptions?: string[];
+    expected?: unknown;
+    expectedOptions?: unknown[];
   };
 }
 
@@ -23,6 +24,7 @@ interface PageDefinition {
 
 interface FullDefinition {
   pageObject: PageDefinition;
+  additionalPageObjects?: PageDefinition[];
   testSteps: TestStep[];
 }
 
@@ -31,9 +33,9 @@ interface TestCase {
   path: string;
 }
 
-// Argumento 1: Ruta al archivo de activos de la IA (.ai-assets.json)
+// --- Lógica Principal ---
+
 const fullDefinitionPath = process.argv[2];
-// Argumento 2: Ruta al caso de prueba original (.testcase.json)
 const testCasePath = process.argv[3];
 
 if (!fullDefinitionPath || !testCasePath) {
@@ -43,145 +45,211 @@ if (!fullDefinitionPath || !testCasePath) {
 
 const fullDefinition: FullDefinition = JSON.parse(fs.readFileSync(fullDefinitionPath, 'utf8'));
 const testCase: TestCase = JSON.parse(fs.readFileSync(testCasePath, 'utf8'));
-const { pageObject, testSteps } = fullDefinition;
-const { className } = pageObject;
-const { path: navigationPath } = testCase;
-const pomInstanceName = `${className.charAt(0).toLowerCase()}${className.slice(1)}`;
-const testFileName = className.replace(/([A-Z])/g, '-$1').toLowerCase().slice(1);
+const { pageObject, additionalPageObjects = [], testSteps } = fullDefinition;
 
-// Función para generar aserciones apropiadas según el tipo
-const generateAssertion = (step: TestStep, pomInstanceName: string): string => {
-  if (!step.assert) return '';
+const allPageClasses = [pageObject, ...additionalPageObjects];
+const uniqueClassNames = [...new Set(allPageClasses.map(p => p.className))];
 
-  const { type, expected } = step.assert;
+const pomImports = uniqueClassNames.map(className =>
+  `import { ${className} } from '../../pages/generated/${className}';`
+).join('\n');
 
-  // Para aserciones de tipo "oneOf", el método ya está implementado en el POM
-  if (type === 'oneOf' && step.action.includes('OneOf')) {
-    return ''; // El método del POM ya maneja la aserción
+const pomDeclarations = uniqueClassNames.map(className => {
+  const instanceName = `${className.charAt(0).toLowerCase()}${className.slice(1)}`;
+  return `  let ${instanceName}: ${className};`;
+}).join('\n');
+
+const pomInitializations = uniqueClassNames.map(className => {
+    const instanceName = `${className.charAt(0).toLowerCase()}${className.slice(1)}`;
+    return `    ${instanceName} = new ${className}(page);`;
+}).join('\n');
+
+const testFileName = testCase.name.replace(/\s+/g, '-').toLowerCase();
+
+// --- Validación cruzada de métodos ---
+function getAllPomMethods(className: string): string[] {
+    const pomPath = path.resolve(__dirname, `../pages/generated/${className}.ts`);
+   const basePagePath = path.resolve(__dirname, '../pages/BasePage.ts');
+
+     let methods: string[] = [];
+     const methodRegex = /async ([a-zA-Z0-9_]+)/g;
+    let match;
+
+    // Leer métodos de la clase específica
+    if (fs.existsSync(pomPath)) {
+      const content = fs.readFileSync(pomPath, 'utf8');
+      while ((match = methodRegex.exec(content)) !== null) {
+        methods.push(match[1]);
+      }
+    }
+
+    // Leer y añadir métodos de la BasePage
+    if (fs.existsSync(basePagePath)) {
+      const baseContent = fs.readFileSync(basePagePath, 'utf8');
+     // Resetear la regex para una nueva búsqueda
+      methodRegex.lastIndex = 0;
+      while ((match = methodRegex.exec(baseContent)) !== null) {
+        methods.push(match[1]);
+      }
+    }
+
+    // Devolver una lista única de métodos
+    return [...new Set(methods)];
   }
 
-  // Para otras aserciones, generar el código apropiado
-  if (type === 'text' && expected) {
-    return `\n    // Validación: ${step.action}\n    await expect(${pomInstanceName}.page).toContainText('${expected}');`;
+const pomMethodsByClass: Record<string, string[]> = {};
+uniqueClassNames.forEach(className => {
+  pomMethodsByClass[className] = getAllPomMethods(className);
+});
+
+testSteps.forEach((step, index) => {
+  if (!step.page || !uniqueClassNames.includes(step.page)) return;
+  const className = step.page;
+  const methodName = step.action;
+  if (!pomMethodsByClass[className].includes(methodName)) {
+    console.warn(`[ADVERTENCIA] El método '${methodName}' llamado en el paso ${index + 1} no existe en el Page Object '${className}'. Considera agregarlo o revisar la convención de nombres.`);
   }
+});
 
-  return '';
-};
-
-// Función para generar esperas inteligentes
-const generateWaitFor = (step: TestStep, pomInstanceName: string): string => {
-  if (!step.waitFor) return '';
-
-  const { element, state } = step.waitFor;
-
-  // Si el método ya incluye "waitFor" en su nombre, no duplicar
-  if (step.action.includes('waitFor')) {
-    return '';
-  }
-
-  // Generar espera explícita antes de la acción
-  return `\n    // Esperando que ${element} esté ${state}\n    await ${pomInstanceName}.waitFor${element.charAt(0).toUpperCase() + element.slice(1)}Visible();`;
-};
-
-// Generar los pasos del test con manejo inteligente
 const specSteps = testSteps.map((step, index) => {
-  const paramsString = step.params.map(p => JSON.stringify(p)).join(', ');
-  let stepCode = '';
+  let className = step.page;
+  const isMultiPageTest = uniqueClassNames.length > 1;
 
-  // Manejo especial para navegación
-  if (step.action.toLowerCase().includes('navigate')) {
-    stepCode = `await ${pomInstanceName}.navigate(${JSON.stringify(navigationPath)});`;
-
-    // Si hay waitFor después de navegación, agregarlo
-    if (step.waitFor) {
-      stepCode += `\n    // Esperando que la página cargue completamente`;
-      stepCode += `\n    await ${pomInstanceName}.page.waitForLoadState('networkidle');`;
+  // --- LÓGICA MEJORADA PARA DETERMINAR LA PÁGINA ---
+  // Si la página no está definida en el paso...
+  if (!className) {
+    // Y si es un test de una sola página, asumimos que es esa única página.
+    if (!isMultiPageTest) {
+      className = uniqueClassNames[0];
+    } else {
+      // Si es multi-página y no se especifica, es un error y se omite.
+      console.warn(
+        `[ADVERTENCIA] El paso de prueba '${step.action}' en un test multi-página no especifica a qué página pertenece. Se omitirá.`
+      );
+      return `// Paso omitido: 'page' no especificada en test multi-página.`;
     }
   }
-  // Manejo especial para expects de URL
-  else if (step.action.startsWith('expect')) {
-    stepCode = `await expect(page).toHaveURL(new RegExp(${paramsString}));`;
-  }
-  // Todos los demás métodos del POM
-  else {
-    // Agregar espera si es necesaria
-    const waitCode = generateWaitFor(step, pomInstanceName);
-    if (waitCode) {
-      stepCode += waitCode + '\n    ';
-    }
-
-    // Llamar al método del POM
-    stepCode += `await ${pomInstanceName}.${step.action}(${paramsString});`;
-
-    // Agregar aserción si es necesaria
-    const assertCode = generateAssertion(step, pomInstanceName);
-    if (assertCode) {
-      stepCode += assertCode;
-    }
+  // Si la página está definida pero no existe, también se omite.
+  else if (!uniqueClassNames.includes(className)) {
+    console.warn(
+      `[ADVERTENCIA] El paso de prueba '${step.action}' tiene una propiedad 'page' inválida ('${className}'). Se omitirá.`
+    );
+    return `// Paso omitido por 'page' inválida: ${JSON.stringify(step)}`;
   }
 
-  // Agregar comentario descriptivo para cada paso importante
-  if (index > 0 && (step.waitFor || step.assert || step.action.includes('click'))) {
-    stepCode = `\n    // Paso ${index + 1}: ${step.action}\n    ${stepCode}`;
+  const methodName = step.action;
+  const instanceName = `${className.charAt(0).toLowerCase()}${className.slice(1)}`;
+  const params = Array.isArray(step.params) ? step.params : [];
+  const paramsString = params.map(p => JSON.stringify(p)).join(', ');
+
+  let stepCode = `    // Paso ${index + 1}: ${methodName} en la página ${className}\n`;
+
+  // --- LÓGICA DE VALIDACIÓN Y GENERACIÓN DE CÓDIGO ---
+
+  // Se mantiene la validación para asegurar que el método fue generado correctamente en el POM.
+  // El método 'navigate' se maneja aquí porque ahora tenemos un 'className' válido.
+  if (!pomMethodsByClass[className].includes(methodName)) {
+    console.warn(
+      `[ADVERTENCIA] El método '${methodName}' llamado en el paso ${index + 1} no existe en el Page Object '${className}'. Paso omitido.`
+    );
+    return `// Paso omitido: método '${methodName}' no existe en '${className}'`;
+  }
+
+  if (methodName.toLowerCase().includes('navigate')) {
+    stepCode += `    await ${instanceName}.navigate(${JSON.stringify(testCase.path)});`;
+  } else {
+    stepCode += `    await ${instanceName}.${methodName}(${paramsString});`;
+  }
+
+  // LÓGICA DE ASERCIÓN
+  if (step.assert) {
+    switch (step.assert.type) {
+      case 'textVisible':
+        stepCode += `\n    await expect(page.locator('body')).toContainText(${JSON.stringify(
+          step.assert.expected
+        )});`;
+        break;
+      case 'urlContains': {
+        const expectedString = String(step.assert.expected).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        stepCode += `\n    await expect(page).toHaveURL(new RegExp('.*' + ${JSON.stringify(
+          expectedString
+        )} + '.*'));`;
+        break;
+      }
+      case 'oneOf': {
+        const options = (step.assert.expectedOptions || [])
+          .map(opt => JSON.stringify(opt))
+          .join(', ');
+        stepCode += `\n    await ${instanceName}.${methodName}([${options}]);`;
+        break;
+      }
+      default:
+        console.warn(`[ADVERTENCIA] Tipo de aserción no reconocido: ${step.assert.type}`);
+    }
   }
 
   return stepCode;
-}).join('\n    ');
+}).join('\n');
 
-// Construir el template final del archivo de prueba con mejor estructura
+
 const template = `// tests/generated/${testFileName}.spec.ts
-// Archivo de prueba generado automáticamente por 'npm run orchestrate'
+// Archivo de prueba multi-página generado automáticamente.
 // Historia de usuario: ${testCase.name}
 
-import { test, expect } from '@playwright/test';
-import { ${className} } from '../../pages/generated/${className}';
+import { test, expect, type Page } from '@playwright/test';
+${pomImports}
 import * as fs from 'fs';
+import * as path from 'path';
 
 test.describe('${testCase.name}', () => {
-  let ${pomInstanceName}: ${className};
-  const testFileName = '${testFileName}'; // Definir la variable que faltaba
+${pomDeclarations}
+  const testFileName = '${testFileName}';
 
   test.beforeEach(async ({ page }) => {
-    ${pomInstanceName} = new ${className}(page);
+    // Instanciar todos los Page Objects necesarios para el flujo
+${pomInitializations}
 
-    // Configuración inicial para mejorar estabilidad
-    await page.setViewportSize({ width: 1280, height: 720 });
+    // Configuración inicial
+    await page.setViewportSize({ width: 1920, height: 1080 });
     page.setDefaultTimeout(30000);
   });
 
   test('Flujo completo de la historia de usuario', async ({ page }) => {
     try {
       // === INICIO DEL FLUJO DE PRUEBA ===
-      ${specSteps}
-
+${specSteps}
       // === FIN DEL FLUJO DE PRUEBA ===
       console.log('✅ Test "${testCase.name}" ejecutado con éxito!');
     } catch (error) {
-      // Captura de pantalla en caso de fallo para debugging
-      await page.screenshot({
-        path: \`test-results/\${testFileName}-failure-\${Date.now()}.png\`,
-        fullPage: true
-      });
+      console.error('❌ Fallo detectado en el flujo de prueba:', error);
       throw error;
     }
   });
 
   test.afterEach(async ({ page }, testInfo) => {
-    // Log adicional si el test falló
+    // Guardar artefactos solo si la prueba falló
     if (testInfo.status !== 'passed') {
-      console.log(\`❌ Test falló: \${testInfo.error?.message}\`);
+      console.log(\`[DEBUG] El test falló: \${testInfo.error?.message}\`);
+      const failureDir = path.resolve(__dirname, '../../test-results/failures');
+      if (!fs.existsSync(failureDir)) fs.mkdirSync(failureDir, { recursive: true });
 
-      // Guardar el HTML de la página para debugging
+      const timestamp = new Date().toISOString().replace(/:/g, '-');
+      const safeTestName = testInfo.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const baseFilePath = path.join(failureDir, \`\${safeTestName}_\${timestamp}\`);
+
+      const screenshotPath = \`\${baseFilePath}_screenshot.png\`;
+      await page.screenshot({ path: screenshotPath, fullPage: true });
+      console.log(\`[DEBUG] Captura de pantalla de fallo guardada en: \${screenshotPath}\`);
+
+      const htmlPath = \`\${baseFilePath}_page.html\`;
       const html = await page.content();
-      const htmlPath = \`test-results/\${testFileName}-failure-\${Date.now()}.html\`;
       await fs.promises.writeFile(htmlPath, html);
-      console.log(\`HTML guardado en: \${htmlPath}\`);
+      console.log(\`[DEBUG] HTML de fallo guardado en: \${htmlPath}\`);
     }
   });
 });
 `;
 
-// Escribir el nuevo archivo en la carpeta 'tests/generated'
 const outputDir = path.resolve(__dirname, `../tests/generated`);
 if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
@@ -189,8 +257,7 @@ if (!fs.existsSync(outputDir)) {
 const outputPath = path.join(outputDir, `${testFileName}.spec.ts`);
 fs.writeFileSync(outputPath, template);
 
-console.log(`✅ Archivo de prueba generado exitosamente!`);
+console.log(`✅ Archivo de prueba multi-página generado exitosamente!`);
 console.log(`📄 Ubicación: ${outputPath}`);
-console.log(`🎯 Pasos de prueba: ${testSteps.length}`);
-console.log(`⏳ Esperas inteligentes: ${testSteps.filter(s => s.waitFor).length}`);
-console.log(`✓ Aserciones: ${testSteps.filter(s => s.assert).length}`);
+console.log(`🧠 Page Objects involucrados: ${uniqueClassNames.join(', ')}`);
+console.log(`🎯 Pasos de prueba generados: ${testSteps.length}`);

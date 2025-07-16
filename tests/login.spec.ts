@@ -16,7 +16,6 @@ const testCases = JSON.parse(fs.readFileSync(credentialsPath, 'utf-8'));
 // Usamos test.describe para agrupar nuestros tests de login.
 // Añadimos "- Data Driven" para diferenciarlo en los reportes si tuviéramos otros tests de login.
 test.describe('Login Functionality - Data Driven', () => {
-
   // Iteramos sobre cada objeto (caso de prueba) en nuestro array 'testCases'
   testCases.forEach((data: any) => {
     // Creamos un test individual para cada conjunto de datos.

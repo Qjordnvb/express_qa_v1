@@ -13,9 +13,11 @@ export class ProductDetailPage extends BasePage {
   constructor(page: Page) {
     super(page);
 
-    this.productTitle = page.locator('h1')
+    this.productTitle = page
+      .locator('h1')
       .or(page.getByRole('heading', { level: 1 }))
-      .or(page.locator('.product-info h1')).first();
+      .or(page.locator('.product-info h1'))
+      .first();
 
     this.addToCartButton = page.getByRole('button', { name: 'Add to Cart' });
 
@@ -49,7 +51,9 @@ export class ProductDetailPage extends BasePage {
     } catch (error) {
       // Si no lo encontramos, tomamos una captura para depurar y lanzamos un error claro.
       await this.page.screenshot({ path: 'debug-out-of-stock.png', fullPage: true });
-      throw new Error('Fallo de precondición: El producto NO está "In Stock" en la página de detalle.');
+      throw new Error(
+        'Fallo de precondición: El producto NO está "In Stock" en la página de detalle.',
+      );
     }
   }
 
@@ -62,9 +66,12 @@ export class ProductDetailPage extends BasePage {
     await this.addToCartButton.hover();
     await this.page.waitForTimeout(500);
     await this.addToCartButton.click();
-    if (browserName === 'webkit' || browserName === 'chromium' || browserName === "firefox") {
+    if (browserName === 'webkit' || browserName === 'chromium' || browserName === 'firefox') {
       console.log(`[${browserName}] Tomando screenshot ANTES de esperar el toast...`);
-      await this.page.screenshot({ path: `debug-${browserName}-before-toast-wait.png`, fullPage: true });
+      await this.page.screenshot({
+        path: `debug-${browserName}-before-toast-wait.png`,
+        fullPage: true,
+      });
     }
     console.log('Esperando el toast de notificación de éxito...');
     await this.successToast.waitFor({ state: 'visible', timeout: 15000 });
@@ -72,8 +79,10 @@ export class ProductDetailPage extends BasePage {
   }
 
   async verifySuccessToastContainsProduct(productName: string): Promise<void> {
-    await expect(this.successToast.locator('p'))
-      .toContainText(`Success: You have added ${productName} to your shopping cart!`, { timeout: 10000 });
+    await expect(this.successToast.locator('p')).toContainText(
+      `Success: You have added ${productName} to your shopping cart!`,
+      { timeout: 10000 },
+    );
     console.log(`Toast de éxito verificado para el producto: ${productName}`);
   }
 
