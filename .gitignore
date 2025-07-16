@@ -29,6 +29,8 @@ lerna-debug.log*
 /snapshots/
 tests/generated/
 pages/generated/
+knowledge-base/
+orchestrator/generated-assets
 # Archivos de compilación de TypeScript
 *.tsbuildinfo
 dist/

@@ -1,6 +1,8 @@
 // orchestrator/llms/GoogleGeminiService.ts
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
-import { ILlmService } from './ILlmService'; // <-- AÑADIDO
+import { ILlmService } from './ILlmService';
+import { AIAsserts } from '../failure-analyzer';
+import { DetectedPattern } from '../ui-pattern-detector';
 
 const generationConfig = {
   temperature: 0.05, // Hacemos a la IA menos "creativa" para que siga el formato
@@ -12,32 +14,47 @@ const generationConfig = {
 const safetySettings = [
   { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
   { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-  { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-  { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+  {
+    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
 ];
 
-export class GoogleGeminiService implements ILlmService { // <-- CLASE QUE IMPLEMENTA LA INTERFAZ
+export class GoogleGeminiService implements ILlmService {
   private model;
-
-
 
   constructor() {
     const apiKey = process.env.GOOGLE_API_KEY;
-    if (!apiKey) { throw new Error("La variable de entorno GOOGLE_API_KEY no está definida."); }
+    if (!apiKey) {
+      throw new Error('La variable de entorno GOOGLE_API_KEY no está definida.');
+    }
     const genAI = new GoogleGenerativeAI(apiKey);
-    console.log('apiKey',apiKey)
-    this.model = genAI.getGenerativeModel({ model: "gemini-1.5-flash"  });
+    console.log('apiKey', apiKey);
+    this.model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
   }
 
-
-
-  async getTestAssetsFromIA(userStory: string[], imageBase64: string, detectedPatterns: any[] = []): Promise<any> {
-    console.log("Enviando historia de usuario estructurada (Gherkin), imagen y contexto de UI a Google Gemini...");
+  async getTestAssetsFromIA(
+    userStory: string[],
+    imageBase64: string,
+    detectedPatterns: DetectedPattern[] = [],
+  ): Promise<AIAsserts | null> {
+    console.log(
+      'Enviando historia de usuario estructurada (Gherkin), imagen y contexto de UI a Google Gemini...',
+    );
 
     const userStoryAsString = userStory.join('\n');
 
-    const patternsContext = detectedPatterns.length > 0
-        ? `Adicionalmente, un análisis estructural de la página ha detectado los siguientes patrones de UI: ${JSON.stringify(detectedPatterns, null, 2)}. Usa este contexto para generar selectores y pasos más precisos y relevantes. Por ejemplo, si detectas un 'form', prioriza los selectores dentro de ese formulario.`
+    const patternsContext =
+      detectedPatterns.length > 0
+        ? `Adicionalmente, un análisis estructural de la página ha detectado los siguientes patrones de UI: ${JSON.stringify(
+            detectedPatterns,
+            null,
+            2,
+          )}. Usa este contexto para generar selectores y pasos más precisos y relevantes. Por ejemplo, si detectas un 'form', prioriza los selectores dentro de ese formulario.`
         : '';
 
     // El prompt que ya perfeccionamos
@@ -79,6 +96,15 @@ export class GoogleGeminiService implements ILlmService { // <-- CLASE QUE IMPLE
       * Incluir "waitFor" cuando el elemento pueda no estar disponible inmediatamente
       * Incluir "assert" para validaciones importantes
 
+   REGLA DE ORO PARA NOMBRES DE CLASES:
+   - El nombre de la clase Page Object DEBE ser específico al contexto de la prueba.
+   - Usa el nombre del sitio web o la funcionalidad principal como prefijo.
+   - Por ejemplo:
+   - Para google.com, la clase debe ser GoogleHomePage.
+   - Para una tienda online, EcommerceHomePage.
+   - Para una página de login, AuthLoginPage.
+   - NUNCA uses el nombre genérico "HomePage" para dos sitios web diferentes. Sé siempre específico.
+
    REGLAS DE GENERACIÓN DE NOMBRES:
    - Para inputs/textareas: "fill[NombreElemento]" (ej. "fillEmailInput", "fillPasswordField")
    - Para botones: "click[NombreElemento]" (ej. "clickLoginButton", "clickSubmitButton")
@@ -86,7 +112,6 @@ export class GoogleGeminiService implements ILlmService { // <-- CLASE QUE IMPLE
    - Para selects: "select[NombreElemento]" (ej. "selectCountryDropdown")
    - Para elementos de solo lectura: "waitFor[NombreElemento]Visible", "get[NombreElemento]Text", "assert[NombreElemento]Contains"
    - Para links: "click[NombreElemento]Link"
-
 
    REGLAS PARA ELEMENTOS SEGÚN TIPO:
    - **inputs** (elementType: "input"):
@@ -115,10 +140,21 @@ export class GoogleGeminiService implements ILlmService { // <-- CLASE QUE IMPLE
    - Antes de la primera interacción con cualquier elemento crítico
 
    CUÁNDO USAR assert:
-   - Después de hacer clic en botones de navegación (validar URL)
-   - Para verificar mensajes de error o éxito
+   - Después de hacer clic en botones de navegación (validar URL con "urlContains")
+   - Para verificar mensajes de error o éxito (validar texto con "textVisible")
    - Para validar que un valor se ingresó correctamente
    - Para confirmar el estado final de una acción
+
+   REGLA DE ASERCIÓN DE TEXTO:
+   - Si la historia de usuario pide validar que un texto es visible en la página (ej. "la página de resultados debe mostrar..."), usa el tipo de aserción "textVisible".
+
+   MAPEO DE INTENCIONES A ASERCIONES (MUY IMPORTANTE):
+   - SI la historia dice "...URL debe contener [texto]...", ENTONCES usa 'assert: { "type": "urlContains", "expected": "[texto]" }'.
+   - SI la historia dice "...debe mostrar el texto [texto]...", ENTONCES usa 'assert: { "type": "textVisible", "expected": "[texto]" }'.
+   - SI la historia dice "...debe ser visible el elemento [nombre]...", ENTONCES usa 'waitFor: { "element": "[nombre]", "state": "visible" }' sin un 'assert'.
+
+   EJEMPLO DE ASERCIÓN "textVisible":
+   "assert": { "type": "textVisible", "expected": "Texto a verificar" }
 
    REQUISITOS ESTRICTOS:
    - El JSON debe ser válido (comas correctas, comillas dobles)
@@ -319,13 +355,67 @@ EJEMPLO CON MÚLTIPLES OPCIONES:
 
 - Esto es solo un ejemplo conceptual, ya que existen muchos sitios webs, con distintos tipos de mensajes, por eso siempre asegurate de leer correctamente la historia de usuario y que ese sea tu punto de partida para todo lo demas.
 
+   REGLAS ADICIONALES PARA ASIGNACIÓN DE ELEMENTOS A PAGE OBJECTS:
+   - Cada elemento de UI debe ser asignado únicamente al Page Object de la página donde aparece visualmente en la(s) captura(s) correspondiente(s).
+   - Si un paso de prueba ("testStep") requiere interactuar con un elemento en una página específica (por ejemplo, "SearchResultsPage"), ese elemento debe estar definido en el array "locators" del Page Object de esa página.
+   - No incluyas elementos de la página de resultados en el Page Object de la página inicial, ni viceversa.
+   - No dupliques elementos entre Page Objects. Cada elemento debe estar solo en el Page Object donde aparece.
+   - Si tienes dudas sobre a qué página pertenece un elemento, analiza cuidadosamente la secuencia de capturas y el flujo de usuario.
+
+   EJEMPLO DE ASIGNACIÓN CORRECTA:
+   Si el filtro "inStockFilter" solo aparece en la página de resultados de búsqueda, debe estar así:
+   "additionalPageObjects": [
+     {
+       "className": "SearchResultsPage",
+       "locators": [
+         {
+           "name": "inStockFilter",
+           "elementType": "checkbox",
+           "actions": ["check"],
+           "selectors": [{ "type": "getByLabel", "value": "In Stock" }]
+         }
+       ]
+     }
+   ]
+   Y NO en el Page Object de la página inicial.
+
+   REGLAS ADICIONALES PARA SELECTORES:
+   - Para cada elemento en "locators", genera al menos 3 selectores de diferentes tipos. Prioriza en este orden:
+     1. getByRole (con "name" si es posible)
+     2. getByLabel
+     3. getByPlaceholder
+     4. css
+     5. xpath
+     6. getByText (solo para elementos de texto)
+   - Si el elemento tiene un atributo id o name, incluye un selector css o locator usando ese atributo.
+   - No inventes selectores: solo genera selectores que puedan existir razonablemente según la imagen, el contexto y el tipo de elemento.
+   - Si tienes acceso al HTML (o fragmento relevante), prioriza selectores que realmente existan en el DOM.
+   - Si el elemento no tiene un label visible, omite getByLabel y prioriza otros tipos.
+   - No repitas el mismo tipo de selector con valores diferentes; cada tipo debe ser único.
+   - El objetivo es maximizar la resiliencia: si un selector falla, los otros deben funcionar.
+
+   EJEMPLO DE LOCATORS PARA UN INPUT:
+   {
+     "name": "searchInput",
+     "elementType": "input",
+     "actions": ["fill"],
+     "selectors": [
+       { "type": "getByRole", "value": "textbox", "options": { "name": "Search" } },
+       { "type": "getByPlaceholder", "value": "Search" },
+       { "type": "css", "value": "input[name='search']" }
+     ]
+   }
+
  `;
-
-
 
     try {
       const result = await this.model.generateContent({
-        contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType: 'image/png', data: imageBase64 } }] }],
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: prompt }, { inlineData: { mimeType: 'image/png', data: imageBase64 } }],
+          },
+        ],
         generationConfig,
         safetySettings,
       });
@@ -333,14 +423,14 @@ EJEMPLO CON MÚLTIPLES OPCIONES:
       const startIndex = responseText.indexOf('{');
       const endIndex = responseText.lastIndexOf('}');
       if (startIndex === -1 || endIndex === -1) {
-        throw new Error("No se encontró un objeto JSON válido en la respuesta de la IA.");
+        throw new Error('No se encontró un objeto JSON válido en la respuesta de la IA.');
       }
       const jsonString = responseText.substring(startIndex, endIndex + 1);
-      console.log("IA ha respondido. Parseando JSON extraído...");
+      console.log('IA ha respondido. Parseando JSON extraído...');
       return JSON.parse(jsonString);
     } catch (error) {
-      console.error("Error al comunicarse con la API de Google AI:", error);
-      throw new Error("No se pudo obtener los activos de prueba desde la IA.");
+      console.error('Error al comunicarse con la API de Google AI:', error);
+      throw new Error('No se pudo obtener los activos de prueba desde la IA.');
     }
   }
 }

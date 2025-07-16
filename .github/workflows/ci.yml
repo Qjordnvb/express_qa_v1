@@ -4,7 +4,7 @@ name: CI de Pruebas con Playwright y Docker
 # Define cuándo se debe ejecutar este workflow.
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 # Define los trabajos (jobs) que se ejecutarán.

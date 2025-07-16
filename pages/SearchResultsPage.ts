@@ -7,7 +7,6 @@ export class SearchResultsPage extends BasePage {
   readonly inStockCheckboxInput: Locator; // Cambiado a label para asegurar clickeabilidad
   readonly inStockFilterLabelToClick: Locator;
 
-
   constructor(page: Page) {
     super(page);
 
@@ -16,7 +15,7 @@ export class SearchResultsPage extends BasePage {
     this.inStockFilterLabelToClick = page.locator('label.custom-control-label[for="mz-fss-0--1"]');
     // Selector para la etiqueta "In Stock (X)" del filtro.
     // Buscamos un label que contenga "In Stock" seguido de un número entre paréntesis.
-    this.inStockCheckboxInput= page.locator('#mz-fss-0--1');
+    this.inStockCheckboxInput = page.locator('#mz-fss-0--1');
   }
 
   /**
@@ -29,11 +28,13 @@ export class SearchResultsPage extends BasePage {
     await this.inStockFilterLabelToClick.waitFor({ state: 'visible', timeout: 15000 });
 
     // Verificamos el estado del INPUT asociado antes de hacer clic en el LABEL
-    if (!await this.inStockCheckboxInput.isChecked()) {
-        console.log('Label "In Stock" no está activo (checkbox no marcado). Haciendo clic en el label...');
-        await this.inStockFilterLabelToClick.click();
+    if (!(await this.inStockCheckboxInput.isChecked())) {
+      console.log(
+        'Label "In Stock" no está activo (checkbox no marcado). Haciendo clic en el label...',
+      );
+      await this.inStockFilterLabelToClick.click();
     } else {
-        console.log('Label "In Stock" ya está activo (checkbox marcado).');
+      console.log('Label "In Stock" ya está activo (checkbox marcado).');
     }
 
     await this.page.waitForTimeout(2000);
@@ -55,7 +56,10 @@ export class SearchResultsPage extends BasePage {
     // Ej: "MacBook Air MacBook Air". Usaremos una expresión regular que maneje esto.
     // Construimos la RegExp para que busque productName, opcionalmente seguido de un espacio y el mismo productName.
     const productNamePattern = new RegExp(`${productName}( ${productName})?`, 'i');
-    const productLink = this.page.locator('.product-layout .caption h4 a').filter({ hasText: productNamePattern }).first();
+    const productLink = this.page
+      .locator('.product-layout .caption h4 a')
+      .filter({ hasText: productNamePattern })
+      .first();
 
     console.log(`Seleccionando producto con nombre que coincida con: '${productName}'`);
     await productLink.waitFor({ state: 'visible', timeout: 15000 });

@@ -3,10 +3,16 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // --- Definición de Interfaces ---
+interface SelectorOptions {
+  name?: string;
+  exact?: boolean;
+  [key: string]: unknown;
+}
+
 interface SelectorDef {
   type: 'locator' | 'getByRole' | 'getByText' | 'getByLabel' | 'getByPlaceholder' | 'css';
   value: string;
-  options?: any;
+  options?: SelectorOptions;
 }
 
 interface LocatorAction {
@@ -23,46 +29,76 @@ interface PageDefinition {
   locators: LocatorAction[];
 }
 
-// MODIFICADO: La definición completa ahora puede incluir múltiples Page Objects.
+interface TestStep {
+  page?: string;
+  action: string;
+  params?: unknown[];
+  waitFor?: unknown;
+  assert?: unknown;
+  [key: string]: unknown;
+}
+
 interface FullDefinition {
   pageObject: PageDefinition;
   additionalPageObjects?: PageDefinition[];
-  testSteps: any[];
+  testSteps: TestStep[];
 }
 
 // --- Funciones Auxiliares ---
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-// Función para construir el array de selectores (sin cambios)
+// Función para construir el array de selectores (CORREGIDA)
 const buildLocatorsArray = (selectors: SelectorDef[]): string => {
-  const selectorLines = selectors.map(s => {
-    const optionsString = s.options ? `, ${JSON.stringify(s.options)}` : '';
+  const selectorLines = selectors.map((s) => {
+    let value = s.value;
+    let options = s.options;
+
+    // 1. Detectar y separar si el 'value' contiene un objeto JSON incrustado.
+
+    const jsonMatch = value.match(/({.*})$/);
+    if (jsonMatch && jsonMatch[1]) {
+      try {
+        const embeddedOptions = JSON.parse(jsonMatch[1]);
+        // Extraemos el valor real (ej. 'textbox')
+        value = value.substring(0, value.indexOf(jsonMatch[1]));
+        // Combinamos las opciones para tener una sola fuente de verdad
+        options = { ...options, ...embeddedOptions };
+      } catch (e) {
+        // Si no es un JSON válido, lo ignoramos y usamos el valor como está.
+        console.warn(`Se detectó un posible JSON en el valor del selector, pero no se pudo parsear: ${jsonMatch[1]}`);
+      }
+    }
+
+    const hasOptions = options && Object.keys(options).length > 0;
+    // 2.  La coma se añade ANTES del string de opciones, solo si existen.
+    const optionsString = hasOptions ? `, ${JSON.stringify(options)}` : '';
+
+    // 3. Reemplazar pseudo-clases no válidas como ':contains' por su equivalente en Playwright.
+    if (s.type === 'locator' || s.type === 'css') {
+      value = value.replace(/:contains\((['"])(.*?)\1\)/g, ':has-text("$2")');
+    }
 
     switch (s.type) {
+      // La sintaxis ahora es correcta: ('valor', {opciones})
       case 'getByRole':
-        return `      this.page.getByRole('${s.value}'${optionsString})`;
+        return `      this.page.getByRole('${value}'${optionsString})`;
       case 'getByLabel':
-        return `      this.page.getByLabel('${s.value}'${optionsString})`;
+        return `      this.page.getByLabel('${value}'${optionsString})`;
       case 'getByPlaceholder':
-        return `      this.page.getByPlaceholder('${s.value}'${optionsString})`;
+        return `      this.page.getByPlaceholder('${value}'${optionsString})`;
       case 'getByText':
-        return `      this.page.getByText('${s.value}'${optionsString})`;
+        return `      this.page.getByText('${value}'${optionsString})`;
       case 'css':
       case 'locator':
       default:
-        return `      this.page.locator(\`${s.value}\`)`;
+        return `      this.page.locator(\`${value}\`)`;
     }
   });
-
   return `    const locators = [\n${selectorLines.join(',\n')}\n    ];`;
 };
 
-// =======================================================================
-// INICIO DE LA MODIFICACIÓN DE `generateMethodsForElement`
-// =======================================================================
-// Se respeta el código original y se AÑADE la lógica proactiva.
 
-const generateMethodsForElement = (loc: LocatorAction, testSteps: any[]): string => {
+const generateMethodsForElement = (loc: LocatorAction, testSteps: TestStep[]): string => {
   const methods: string[] = [];
   // Usamos un Set para evitar generar el mismo método dos veces.
   const generatedMethodNames = new Set<string>();
@@ -71,15 +107,15 @@ const generateMethodsForElement = (loc: LocatorAction, testSteps: any[]): string
 
   // Función de ayuda para añadir métodos de forma segura y sin duplicados.
   const addMethod = (methodCode: string, methodName: string) => {
-      if (methodCode && !generatedMethodNames.has(methodName)) {
-          methods.push(methodCode);
-          generatedMethodNames.add(methodName);
-      }
+    if (methodCode && !generatedMethodNames.has(methodName)) {
+      methods.push(methodCode);
+      generatedMethodNames.add(methodName);
+    }
   };
 
-  // Lógica de tu archivo original (INTACTA)
   // SIEMPRE generar método waitFor...Visible para TODOS los elementos
-  addMethod(`
+  addMethod(
+    `
   /**
    * Espera a que ${description} sea visible
    */
@@ -88,12 +124,14 @@ ${buildLocatorsArray(loc.selectors)}
     const element = await this.findSmartly(locators, '${description}');
     await element.waitFor({ state: 'visible', timeout });
     console.log('${description} es visible');
-  }`, `waitFor${elementName}Visible`);
+  }`,
+    `waitFor${elementName}Visible`,
+  );
 
-  // Lógica de tu archivo original (INTACTA)
   // Para elementos sin acciones (texto/alertas), generar métodos adicionales
   if (loc.actions.length === 0) {
-    addMethod(`
+    addMethod(
+      `
   /**
    * Obtiene el texto de ${description}
    */
@@ -102,9 +140,12 @@ ${buildLocatorsArray(loc.selectors)}
     const element = await this.findSmartly(locators, '${description}');
     const text = await element.textContent();
     return text || '';
-  }`, `get${elementName}Text`);
+  }`,
+      `get${elementName}Text`,
+    );
 
-    addMethod(`
+    addMethod(
+      `
   /**
    * Verifica que ${description} contenga el texto esperado
    */
@@ -113,9 +154,12 @@ ${buildLocatorsArray(loc.selectors)}
     const element = await this.findSmartly(locators, '${description}');
     await expect(element).toContainText(expectedText);
     console.log(\`${description} contiene el texto esperado: "\${expectedText}"\`);
-  }`, `assert${elementName}Text`);
+  }`,
+      `assert${elementName}Text`,
+    );
 
-    addMethod(`
+    addMethod(
+      `
   /**
    * Verifica si ${description} está visible
    */
@@ -127,25 +171,28 @@ ${buildLocatorsArray(loc.selectors)}
     } catch {
       return false;
     }
-  }`, `is${elementName}Visible`);
+  }`,
+      `is${elementName}Visible`,
+    );
   }
 
-  // --- NUEVA LÓGICA PROACTIVA ---
   // Se analizan los testSteps para asegurar que todos los métodos necesarios se generen,
-  // independientemente de si la IA los incluyó en el array `actions`.
+  // independientemente de si la IA los incluyó en el array \`actions\`.
   const allRequiredActions = new Set(loc.actions);
-  const relevantSteps = testSteps.filter(step => step.action.toLowerCase().includes(loc.name.toLowerCase()));
+  const relevantSteps = testSteps.filter((step) =>
+    step.action.toLowerCase().includes(loc.name.toLowerCase()),
+  );
 
-  relevantSteps.forEach(step => {
-      if (step.action.startsWith('click')) allRequiredActions.add('click');
-      if (step.action.startsWith('fill')) allRequiredActions.add('fill');
-      if (step.action.startsWith('check')) allRequiredActions.add('check');
-      if (step.action.startsWith('select')) allRequiredActions.add('select');
-      if (step.action.startsWith('clear')) allRequiredActions.add('clear');
-      if (step.action.startsWith('getValue')) allRequiredActions.add('getValue');
-      // Generar métodos de aserción específicos (como assertErrorMessageOneOf)
-      if (step.action.startsWith('assert') && step.action.endsWith('OneOf')) {
-          const assertMethod = `
+  relevantSteps.forEach((step) => {
+    if (step.action.startsWith('click')) allRequiredActions.add('click');
+    if (step.action.startsWith('fill')) allRequiredActions.add('fill');
+    if (step.action.startsWith('check')) allRequiredActions.add('check');
+    if (step.action.startsWith('select')) allRequiredActions.add('select');
+    if (step.action.startsWith('clear')) allRequiredActions.add('clear');
+    if (step.action.startsWith('getValue')) allRequiredActions.add('getValue');
+    // Generar métodos de aserción específicos (como assertErrorMessageOneOf)
+    if (step.action.startsWith('assert') && step.action.endsWith('OneOf')) {
+      const assertMethod = `
   /**
    * Verifica que ${description} contenga uno de los textos esperados
    */
@@ -159,13 +206,13 @@ ${buildLocatorsArray(loc.selectors)}
     }
     console.log(\`${description} contiene uno de los textos esperados.\`);
   }`;
-          addMethod(assertMethod, step.action);
-      }
+      addMethod(assertMethod, step.action);
+    }
   });
 
-  // Lógica de tu archivo original (INTACTA)
+
   // Generar métodos para acciones definidas, ahora usando la lista enriquecida.
-  allRequiredActions.forEach(action => {
+  allRequiredActions.forEach((action) => {
     let method = '';
     const methodName = `${action}${elementName}`;
 
@@ -181,11 +228,15 @@ ${buildLocatorsArray(loc.selectors)}
     ${loc.waitBefore ? `await element.waitFor({ state: '${loc.waitBefore}', timeout: 5000 });` : ''}
     await element.clear();
     await element.fill(text);
-    ${loc.validateAfter ? `
+    ${
+      loc.validateAfter
+        ? `
     const actualValue = await element.inputValue();
     if (actualValue !== text) {
       throw new Error(\`Error al llenar ${description}: se esperaba "\${text}" pero se obtuvo "\${actualValue}"\`);
-    }` : ''}
+    }`
+        : ''
+    }
     console.log(\`${description} llenado con: "\${text}"\`);
   }`;
         break;
@@ -198,10 +249,16 @@ ${buildLocatorsArray(loc.selectors)}
   async ${methodName}(): Promise<void> {
 ${buildLocatorsArray(loc.selectors)}
     const element = await this.findSmartly(locators, '${description}');
-    ${loc.waitBefore === 'enabled' ? `
+    ${
+      loc.waitBefore === 'enabled'
+        ? `
     await element.waitFor({ state: 'visible', timeout: 5000 });
-    await expect(element).toBeEnabled({ timeout: 5000 });` : loc.waitBefore ? `
-    await element.waitFor({ state: '${loc.waitBefore}', timeout: 5000 });` : ''}
+    await expect(element).toBeEnabled({ timeout: 5000 });`
+        : loc.waitBefore
+        ? `
+    await element.waitFor({ state: '${loc.waitBefore}', timeout: 5000 });`
+        : ''
+    }
     try {
       await element.click();
     } catch (error) {
@@ -238,18 +295,47 @@ ${buildLocatorsArray(loc.selectors)}
   }`;
         break;
 
-      case 'check':
-        method = `
+        case 'check':
+  method = `
   /**
-   * Marca ${description}
+   * Marca ${description} de forma robusta (usando Playwright check, click a label o setChecked).
    */
   async ${methodName}(): Promise<void> {
-${buildLocatorsArray(loc.selectors)}
-    const element = await this.findSmartly(locators, '${description}');
-    await element.check();
-    console.log(\`${description} marcado\`);
+    ${buildLocatorsArray(loc.selectors)}
+    const inputElement = await this.findSmartly(locators, '${description}');
+    if (await inputElement.isChecked()) {
+      console.log(\`${description} ya estaba marcado.\`);
+      return;
+    }
+    // 1. Intentar check() nativo Playwright (mejor práctica)
+    try {
+      await inputElement.check({ timeout: 5000 });
+      await expect(inputElement).toBeChecked();
+      console.log(\`${description} marcado con input.check().\`);
+      return;
+    } catch (e) {
+      console.warn(\`[WARN] .check() falló: $\{e\}. Intentando click en label...\`);
+    }
+    // 2. Click en label asociado si hay id
+    const inputId = await inputElement.getAttribute('id');
+    if (inputId) {
+      const labelLocator = this.page.locator(\`label[for="\${inputId}"]\`);
+      try {
+        await labelLocator.waitFor({ state: 'visible', timeout: 3000 });
+        await labelLocator.click();
+        await expect(inputElement).toBeChecked();
+        console.log(\`${description} marcado con click en label.\`);
+        return;
+      } catch (e) {
+        console.warn(\`[WARN] Click en label falló: $\{e\}. Intentando setChecked(force)...\`);
+      }
+    }
+    // 3. Forzar el estado (último recurso)
+    await inputElement.setChecked(true, { force: true });
+    await expect(inputElement).toBeChecked();
+    console.log(\`${description} marcado con setChecked(force:true).\`);
   }`;
-        break;
+  break;
 
       case 'select':
         method = `
@@ -269,20 +355,31 @@ ${buildLocatorsArray(loc.selectors)}
 
   return methods.join('\n');
 };
-// =======================================================================
-// FIN DE LA MODIFICACIÓN
-// =======================================================================
 
-function generatePageObjectClass(pageDefinition: PageDefinition, allTestSteps: any[]): { className: string; content: string; elementCount: number; methodCount: number; } {
-    const { className, locators } = pageDefinition;
-    if (!locators || !className) {
-        throw new Error(`Cada definición de "pageObject" debe contener "className" y "locators". Error en definición: ${JSON.stringify(pageDefinition)}`);
-    }
 
-    const allMethods = locators.map(loc => generateMethodsForElement(loc, allTestSteps)).join('\n');
-    const methodCount = allMethods.split('async ').length - 1;
+function generatePageObjectClass(
+  pageDefinition: PageDefinition,
+  allTestSteps: TestStep[],
+  isMultiPage: boolean // <-- Nuevo parámetro para tomar la decisión correcta
+): { className: string; content: string; elementCount: number; methodCount: number } {
+  const { className, locators } = pageDefinition;
+  if (!locators || !className) {
+    throw new Error(
+      `Cada definición de "pageObject" debe contener "className" y "locators". Error en definición: ${JSON.stringify(pageDefinition)}`
+    );
+  }
 
-    const template = `// pages/generated/${className}.ts
+  // --- LÓGICA UNIFICADA PARA SINGLE Y MULTI-PÁGINA ---
+  // Si es un test multi-página, filtramos los pasos.
+  // Si es de una sola página, usamos todos los pasos, ya que todos le pertenecen.
+  const relevantTestSteps = isMultiPage
+    ? allTestSteps.filter(step => step.page === className)
+    : allTestSteps;
+
+  const allMethods = locators.map((loc) => generateMethodsForElement(loc, relevantTestSteps)).join('\n');
+  const methodCount = allMethods.split('async ').length - 1;
+
+  const template = `// pages/generated/${className}.ts
 // Archivo generado automáticamente. No editar manualmente.
 // Generador Inteligente v2.3 - Proactivo y Estable
 
@@ -297,16 +394,15 @@ ${allMethods}
 }
 `;
 
-    return {
-        className,
-        content: template,
-        elementCount: locators.length,
-        methodCount
-    };
+  return {
+    className,
+    content: template,
+    elementCount: locators.length,
+    methodCount,
+  };
 }
 
 
-// --- Lógica Principal del Script (INTACTA) ---
 const definitionPath = process.argv[2];
 if (!definitionPath) {
   console.error('Error: Por favor, proporciona la ruta al archivo de definición JSON.');
@@ -327,7 +423,9 @@ try {
   }
 
   if (allPageObjects.length === 0) {
-    throw new Error("No se encontraron definiciones de 'pageObject' en el archivo JSON. Asegúrate de que exista 'pageObject' o 'additionalPageObjects'.");
+    throw new Error(
+      "No se encontraron definiciones de 'pageObject' en el archivo JSON. Asegúrate de que exista 'pageObject' o 'additionalPageObjects'.",
+    );
   }
 
   const outputDir = path.resolve(__dirname, `../pages/generated`);
@@ -335,23 +433,30 @@ try {
     fs.mkdirSync(outputDir, { recursive: true });
   }
 
-  console.log(`✅ ¡Iniciando generación de Page Objects Inteligentes para ${allPageObjects.length} página(s)!`);
+  console.log(
+    `✅ ¡Iniciando generación de Page Objects Inteligentes para ${allPageObjects.length} página(s)!`,
+  );
 
   // 3. Iterar y generar un archivo para cada page object encontrado
-  allPageObjects.forEach(pageDef => {
-    // Usar la función modular para generar el contenido de la clase
-    const { className, content, elementCount, methodCount } = generatePageObjectClass(pageDef, fullDefinition.testSteps);
-    const outputPath = path.join(outputDir, `${className}.ts`);
-    fs.writeFileSync(outputPath, content);
+  const isMultiPageTest = allPageObjects.length > 1;
 
-    console.log(`\n  --- Page Object '${className}' generado ---`);
-    console.log(`  📄 Archivo: ${outputPath}`);
-    console.log(`  🧠 Elementos procesados: ${elementCount}`);
-    console.log(`  🎯 Métodos generados: ${methodCount}`);
-  });
+allPageObjects.forEach((pageDef) => {
+  // Usar la función modular para generar el contenido de la clase
+  const { className, content, elementCount, methodCount } = generatePageObjectClass(
+    pageDef,
+    fullDefinition.testSteps,
+    isMultiPageTest // <-- Pasamos el nuevo parámetro
+  );
+  const outputPath = path.join(outputDir, `${className}.ts`);
+  fs.writeFileSync(outputPath, content);
+
+  console.log(`\n  --- Page Object '${className}' generado ---`);
+  console.log(`  📄 Archivo: ${outputPath}`);
+  console.log(`  🧠 Elementos procesados: ${elementCount}`);
+  console.log(`  🎯 Métodos generados: ${methodCount}`);
+});
 
   console.log(`\n✅ Proceso de generación de Page Objects completado.`);
-
 } catch (error) {
   console.error('❌ Error al generar los Page Objects:', error);
   process.exit(1);

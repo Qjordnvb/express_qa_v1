@@ -283,11 +283,7 @@
       {
         "status": 1,
         "signal": null,
-        "output": [
-          null,
-          null,
-          null
-        ],
+        "output": [null, null, null],
         "pid": 57309,
         "stdout": null,
         "stderr": null

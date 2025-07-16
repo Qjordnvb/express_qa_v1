@@ -1,7 +1,7 @@
 // orchestrator/ui-pattern-detector.ts
-import { Page } from '@playwright/test';
+import { Page, ElementHandle } from '@playwright/test';
 
-export interface UIPattern {
+export interface DetectedPattern {
   type: 'form' | 'modal' | 'list' | 'navigation' | 'loading' | 'wizard' | 'table' | 'search';
   confidence: number;
   elements: PatternElement[];
@@ -11,7 +11,7 @@ export interface UIPattern {
 interface PatternElement {
   role: string;
   selector: string;
-  attributes: Record<string, any>;
+  attributes: Record<string, unknown>;
 }
 
 interface PatternBehavior {
@@ -26,18 +26,18 @@ export class UIPatternDetector {
   /**
    * Detecta patrones de UI en una página
    */
-  async detectPatterns(page: Page): Promise<UIPattern[]> {
+  async detectPatterns(page: Page): Promise<DetectedPattern[]> {
     console.log('🔍 Detectando patrones de UI...');
 
-    const patterns: UIPattern[] = [];
+    const patterns: DetectedPattern[] = [];
 
     // Detectar diferentes tipos de patrones
-    patterns.push(...await this.detectFormPatterns(page));
-    patterns.push(...await this.detectModalPatterns(page));
-    patterns.push(...await this.detectLoadingPatterns(page));
-    patterns.push(...await this.detectNavigationPatterns(page));
-    patterns.push(...await this.detectListPatterns(page));
-    patterns.push(...await this.detectWizardPatterns(page));
+    patterns.push(...(await this.detectFormPatterns(page)));
+    patterns.push(...(await this.detectModalPatterns(page)));
+    patterns.push(...(await this.detectLoadingPatterns(page)));
+    patterns.push(...(await this.detectNavigationPatterns(page)));
+    patterns.push(...(await this.detectListPatterns(page)));
+    patterns.push(...(await this.detectWizardPatterns(page)));
 
     // Ordenar por confianza
     return patterns.sort((a, b) => b.confidence - a.confidence);
@@ -46,8 +46,8 @@ export class UIPatternDetector {
   /**
    * Detecta patrones de formularios
    */
-  private async detectFormPatterns(page: Page): Promise<UIPattern[]> {
-    const patterns: UIPattern[] = [];
+  private async detectFormPatterns(page: Page): Promise<DetectedPattern[]> {
+    const patterns: DetectedPattern[] = [];
 
     // Buscar elementos de formulario
     const forms = await page.$$('form');
@@ -55,21 +55,20 @@ export class UIPatternDetector {
     for (const form of forms) {
       const inputs = await form.$$('input, textarea, select');
       const buttons = await form.$$('button[type="submit"], input[type="submit"]');
-      const labels = await form.$$('label');
 
       if (inputs.length > 0 && buttons.length > 0) {
         const elements: PatternElement[] = [];
 
         // Analizar inputs
         for (const input of inputs) {
-          const type = await input.getAttribute('type') || 'text';
-          const name = await input.getAttribute('name') || '';
-          const required = await input.getAttribute('required') !== null;
+          const type = (await input.getAttribute('type')) || 'text';
+          const name = (await input.getAttribute('name')) || '';
+          const required = (await input.getAttribute('required')) !== null;
 
           elements.push({
             role: 'input',
             selector: `[name="${name}"]`,
-            attributes: { type, required }
+            attributes: { type, required },
           });
         }
 
@@ -89,8 +88,8 @@ export class UIPatternDetector {
             isAsync: await this.detectAsyncBehavior(form),
             hasMultiStep,
             requiresAuth: await this.detectAuthRequirement(page),
-            hasConditionalFields: await this.detectConditionalFields(form)
-          }
+            hasConditionalFields: await this.detectConditionalFields(form),
+          },
         });
       }
     }
@@ -101,8 +100,8 @@ export class UIPatternDetector {
   /**
    * Detecta patrones de modales
    */
-  private async detectModalPatterns(page: Page): Promise<UIPattern[]> {
-    const patterns: UIPattern[] = [];
+  private async detectModalPatterns(page: Page): Promise<DetectedPattern[]> {
+    const patterns: DetectedPattern[] = [];
 
     // Selectores comunes para modales
     const modalSelectors = [
@@ -111,7 +110,7 @@ export class UIPatternDetector {
       '[class*="modal"]',
       '[id*="modal"]',
       '.popup',
-      '[class*="overlay"]'
+      '[class*="overlay"]',
     ];
 
     for (const selector of modalSelectors) {
@@ -122,24 +121,28 @@ export class UIPatternDetector {
 
         if (!isVisible) {
           // Detectar triggers de modal
-          const triggers = await page.$$(`[data-toggle="modal"], [onclick*="modal"], [class*="open-modal"]`);
+          const triggers = await page.$$(
+            `[data-toggle="modal"], [onclick*="modal"], [class*="open-modal"]`,
+          );
 
           if (triggers.length > 0) {
             patterns.push({
               type: 'modal',
               confidence: 0.8,
-              elements: [{
-                role: 'modal',
-                selector,
-                attributes: { initiallyHidden: true }
-              }],
+              elements: [
+                {
+                  role: 'modal',
+                  selector,
+                  attributes: { initiallyHidden: true },
+                },
+              ],
               behavior: {
                 hasValidation: false,
                 isAsync: true,
                 hasMultiStep: false,
                 requiresAuth: false,
-                hasConditionalFields: false
-              }
+                hasConditionalFields: false,
+              },
             });
           }
         }
@@ -152,8 +155,8 @@ export class UIPatternDetector {
   /**
    * Detecta patrones de carga
    */
-  private async detectLoadingPatterns(page: Page): Promise<UIPattern[]> {
-    const patterns: UIPattern[] = [];
+  private async detectLoadingPatterns(page: Page): Promise<DetectedPattern[]> {
+    const patterns: DetectedPattern[] = [];
 
     const loadingSelectors = [
       '.spinner',
@@ -162,7 +165,7 @@ export class UIPatternDetector {
       '.skeleton',
       '[class*="shimmer"]',
       '.progress',
-      '[role="progressbar"]'
+      '[role="progressbar"]',
     ];
 
     const loadingElements: PatternElement[] = [];
@@ -173,7 +176,7 @@ export class UIPatternDetector {
         loadingElements.push({
           role: 'loader',
           selector,
-          attributes: { count: elements.length }
+          attributes: { count: elements.length },
         });
       }
     }
@@ -188,8 +191,8 @@ export class UIPatternDetector {
           isAsync: true,
           hasMultiStep: false,
           requiresAuth: false,
-          hasConditionalFields: false
-        }
+          hasConditionalFields: false,
+        },
       });
     }
 
@@ -199,8 +202,8 @@ export class UIPatternDetector {
   /**
    * Detecta patrones de navegación
    */
-  private async detectNavigationPatterns(page: Page): Promise<UIPattern[]> {
-    const patterns: UIPattern[] = [];
+  private async detectNavigationPatterns(page: Page): Promise<DetectedPattern[]> {
+    const patterns: DetectedPattern[] = [];
 
     // Buscar elementos de navegación
     const navElements = await page.$$('nav, [role="navigation"], .navbar, .menu, .nav');
@@ -213,21 +216,23 @@ export class UIPatternDetector {
         patterns.push({
           type: 'navigation',
           confidence: 0.85,
-          elements: [{
-            role: 'navigation',
-            selector: await this.getSelector(nav),
-            attributes: {
-              linkCount: links.length,
-              hasDropdowns: dropdowns.length > 0
-            }
-          }],
+          elements: [
+            {
+              role: 'navigation',
+              selector: await this.getSelector(nav),
+              attributes: {
+                linkCount: links.length,
+                hasDropdowns: dropdowns.length > 0,
+              },
+            },
+          ],
           behavior: {
             hasValidation: false,
             isAsync: false,
             hasMultiStep: false,
             requiresAuth: false,
-            hasConditionalFields: false
-          }
+            hasConditionalFields: false,
+          },
         });
       }
     }
@@ -238,8 +243,8 @@ export class UIPatternDetector {
   /**
    * Detecta patrones de listas
    */
-  private async detectListPatterns(page: Page): Promise<UIPattern[]> {
-    const patterns: UIPattern[] = [];
+  private async detectListPatterns(page: Page): Promise<DetectedPattern[]> {
+    const patterns: DetectedPattern[] = [];
 
     // Buscar estructuras de lista
     const listSelectors = [
@@ -248,7 +253,7 @@ export class UIPatternDetector {
       '.list-item',
       '[class*="list-item"]',
       '.card',
-      '[role="list"] [role="listitem"]'
+      '[role="list"] [role="listitem"]',
     ];
 
     for (const selector of listSelectors) {
@@ -256,30 +261,36 @@ export class UIPatternDetector {
 
       if (items.length > 2) {
         // Analizar si tiene paginación
-        const paginationElements = await page.$$('.pagination, [class*="pagination"], .page-numbers');
+        const paginationElements = await page.$$(
+          '.pagination, [class*="pagination"], .page-numbers',
+        );
 
         // Analizar si tiene filtros
-        const filterElements = await page.$$('[class*="filter"], [class*="search"], input[type="search"]');
+        const filterElements = await page.$$(
+          '[class*="filter"], [class*="search"], input[type="search"]',
+        );
 
         patterns.push({
           type: 'list',
           confidence: 0.8,
-          elements: [{
-            role: 'list',
-            selector,
-            attributes: {
-              itemCount: items.length,
-              hasPagination: paginationElements.length > 0,
-              hasFilters: filterElements.length > 0
-            }
-          }],
+          elements: [
+            {
+              role: 'list',
+              selector,
+              attributes: {
+                itemCount: items.length,
+                hasPagination: paginationElements.length > 0,
+                hasFilters: filterElements.length > 0,
+              },
+            },
+          ],
           behavior: {
             hasValidation: false,
             isAsync: paginationElements.length > 0 || filterElements.length > 0,
             hasMultiStep: false,
             requiresAuth: false,
-            hasConditionalFields: false
-          }
+            hasConditionalFields: false,
+          },
         });
       }
     }
@@ -290,8 +301,8 @@ export class UIPatternDetector {
   /**
    * Detecta patrones de wizard/multi-step
    */
-  private async detectWizardPatterns(page: Page): Promise<UIPattern[]> {
-    const patterns: UIPattern[] = [];
+  private async detectWizardPatterns(page: Page): Promise<DetectedPattern[]> {
+    const patterns: DetectedPattern[] = [];
 
     // Buscar indicadores de wizard
     const wizardSelectors = [
@@ -299,7 +310,7 @@ export class UIPatternDetector {
       '[class*="step"]',
       '.stepper',
       '[class*="progress-bar"]',
-      '.breadcrumb'
+      '.breadcrumb',
     ];
 
     for (const selector of wizardSelectors) {
@@ -307,28 +318,34 @@ export class UIPatternDetector {
 
       if (elements.length > 0) {
         // Buscar botones de navegación
-        const nextButtons = await page.$$('button:has-text("Next"), button:has-text("Continue"), [class*="next"]');
-        const prevButtons = await page.$$('button:has-text("Previous"), button:has-text("Back"), [class*="prev"]');
+        const nextButtons = await page.$$(
+          'button:has-text("Next"), button:has-text("Continue"), [class*="next"]',
+        );
+        const prevButtons = await page.$$(
+          'button:has-text("Previous"), button:has-text("Back"), [class*="prev"]',
+        );
 
         if (nextButtons.length > 0 || prevButtons.length > 0) {
           patterns.push({
             type: 'wizard',
             confidence: 0.85,
-            elements: [{
-              role: 'wizard',
-              selector,
-              attributes: {
-                hasNextButton: nextButtons.length > 0,
-                hasPrevButton: prevButtons.length > 0
-              }
-            }],
+            elements: [
+              {
+                role: 'wizard',
+                selector,
+                attributes: {
+                  hasNextButton: nextButtons.length > 0,
+                  hasPrevButton: prevButtons.length > 0,
+                },
+              },
+            ],
             behavior: {
               hasValidation: true,
               isAsync: false,
               hasMultiStep: true,
               requiresAuth: false,
-              hasConditionalFields: true
-            }
+              hasConditionalFields: true,
+            },
           });
         }
       }
@@ -340,7 +357,7 @@ export class UIPatternDetector {
   /**
    * Detecta validación en formularios
    */
-  private async detectFormValidation(form: any): Promise<boolean> {
+  private async detectFormValidation(form: ElementHandle): Promise<boolean> {
     // Buscar indicadores de validación
     const validationIndicators = [
       '[required]',
@@ -352,7 +369,7 @@ export class UIPatternDetector {
       '.error',
       '.invalid',
       '[class*="error"]',
-      '[class*="validation"]'
+      '[class*="validation"]',
     ];
 
     for (const indicator of validationIndicators) {
@@ -368,7 +385,7 @@ export class UIPatternDetector {
   /**
    * Detecta comportamiento asíncrono
    */
-  private async detectAsyncBehavior(element: any): Promise<boolean> {
+  private async detectAsyncBehavior(element: ElementHandle): Promise<boolean> {
     // Buscar indicadores de comportamiento asíncrono
     const asyncIndicators = [
       '[data-ajax]',
@@ -377,7 +394,7 @@ export class UIPatternDetector {
       '[data-remote]',
       '[onclick*="fetch"]',
       '[onclick*="ajax"]',
-      '[onclick*="axios"]'
+      '[onclick*="axios"]',
     ];
 
     for (const indicator of asyncIndicators) {
@@ -402,7 +419,7 @@ export class UIPatternDetector {
       '.login',
       '#login',
       '[class*="auth"]',
-      '[class*="signin"]'
+      '[class*="signin"]',
     ];
 
     for (const indicator of authIndicators) {
@@ -418,10 +435,14 @@ export class UIPatternDetector {
   /**
    * Detecta campos condicionales
    */
-  private async detectConditionalFields(form: any): Promise<boolean> {
+  private async detectConditionalFields(form: ElementHandle): Promise<boolean> {
     // Buscar campos que puedan aparecer/desaparecer
-    const hiddenFields = await form.$$('[style*="display: none"], [style*="display:none"], .hidden, [hidden]');
-    const conditionalSelectors = await form.$$('[data-condition], [data-depends-on], [ng-if], [v-if], [x-show]');
+    const hiddenFields = await form.$$(
+      '[style*="display: none"], [style*="display:none"], .hidden, [hidden]',
+    );
+    const conditionalSelectors = await form.$$(
+      '[data-condition], [data-depends-on], [ng-if], [v-if], [x-show]',
+    );
 
     return hiddenFields.length > 0 || conditionalSelectors.length > 0;
   }
@@ -429,7 +450,7 @@ export class UIPatternDetector {
   /**
    * Obtiene un selector único para un elemento
    */
-  private async getSelector(element: any): Promise<string> {
+  private async getSelector(element: ElementHandle): Promise<string> {
     // Intentar obtener un selector único
     const id = await element.getAttribute('id');
     if (id) return `#${id}`;
@@ -440,14 +461,14 @@ export class UIPatternDetector {
       return `.${mainClass}`;
     }
 
-    const tagName = await element.evaluate((el: any) => el.tagName.toLowerCase());
+    const tagName = await element.evaluate((el: HTMLElement) => el.tagName.toLowerCase());
     return tagName;
   }
 
   /**
    * Genera recomendaciones basadas en los patrones detectados
    */
-  generateRecommendations(patterns: UIPattern[]): string[] {
+  generateRecommendations(patterns: DetectedPattern[]): string[] {
     const recommendations: string[] = [];
 
     for (const pattern of patterns) {

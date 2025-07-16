@@ -8,10 +8,10 @@ El objetivo final es evolucionar hacia un framework impulsado por Inteligencia A
 
 ## Tecnologías Clave
 
-* **Lenguaje:** TypeScript
-* **Framework de Pruebas:** Playwright
-* **Entorno de Ejecución:** Node.js
-* **Containerización:** Docker
+- **Lenguaje:** TypeScript
+- **Framework de Pruebas:** Playwright
+- **Entorno de Ejecución:** Node.js
+- **Containerización:** Docker
 
 ---
 
@@ -19,10 +19,10 @@ El objetivo final es evolucionar hacia un framework impulsado por Inteligencia A
 
 El único requisito para este proyecto es tener **Docker Engine** instalado y en ejecución.
 
-* **Versión Recomendada:** Se recomienda usar una versión de Docker Engine `20.10.0` o superior para evitar problemas de compatibilidad. Puedes verificar tu versión con el comando:
-    ```bash
-    docker --version
-    ```
+- **Versión Recomendada:** Se recomienda usar una versión de Docker Engine `20.10.0` o superior para evitar problemas de compatibilidad. Puedes verificar tu versión con el comando:
+  ```bash
+  docker --version
+  ```
 
 ### Opciones de Instalación de Docker
 
@@ -30,7 +30,7 @@ El único requisito para este proyecto es tener **Docker Engine** instalado y en
 
 La forma más sencilla de obtener Docker en sistemas de escritorio es a través de Docker Desktop. Incluye el motor de Docker, el cliente de línea de comandos y una interfaz gráfica.
 
-* [Descargar Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- [Descargar Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
 #### Opción 2: Instalación por Consola (Típico para Servidores Linux)
 
@@ -90,8 +90,8 @@ Una vez que el comando anterior termine, se habrán actualizado las carpetas `pl
 ```bash
 npx playwright show-report
 ```
-*(Si el puerto por defecto está en uso, puedes especificar otro: `npx playwright show-report --port 9324`)*
 
+_(Si el puerto por defecto está en uso, puedes especificar otro: `npx playwright show-report --port 9324`)_
 
 ## Estrategia de Pruebas y Fiabilidad
 
@@ -99,8 +99,8 @@ npx playwright show-report
 
 Para mejorar la estabilidad y fiabilidad de nuestra suite de pruebas en el entorno de Integración Continua, hemos implementado una estrategia de reintentos. Las pruebas que fallen en CI se reintentarán automáticamente hasta 2 veces antes de ser marcadas como fallidas.
 
-* **Localmente (`docker run ...`):** Los reintentos están **desactivados** (`retries: 0`) para permitir una depuración más rápida y obtener feedback inmediato sobre los fallos.
-* **En CI (GitHub Actions):** Los reintentos están **activados** (`retries: 2`) para mitigar fallos intermitentes (o "flaky tests") causados por problemas temporales de red o de entorno.
+- **Localmente (`docker run ...`):** Los reintentos están **desactivados** (`retries: 0`) para permitir una depuración más rápida y obtener feedback inmediato sobre los fallos.
+- **En CI (GitHub Actions):** Los reintentos están **activados** (`retries: 2`) para mitigar fallos intermitentes (o "flaky tests") causados por problemas temporales de red o de entorno.
 
 Esta configuración se gestiona en `playwright.config.ts` y se activa automáticamente gracias a la variable de entorno `CI` que provee GitHub Actions.
 
@@ -111,7 +111,7 @@ Este framework incluye un **orquestador de pruebas impulsado por IA** diseñado 
 ### Flujo de Trabajo de Generación de Pruebas
 
 1.  **Crear un Caso de Prueba (`.testcase.json`)**
-    * En la carpeta `orchestrator/user-stories/`, crea un archivo `.json` con la siguiente estructura:
+    - En la carpeta `orchestrator/user-stories/`, crea un archivo `.json` con la siguiente estructura:
       ```json
       {
         "name": "Nombre Descriptivo del Test",
@@ -119,22 +119,22 @@ Este framework incluye un **orquestador de pruebas impulsado por IA** diseñado 
         "userStory": "La historia de usuario en lenguaje natural que describe el flujo a probar."
       }
       ```
-    * El `path` se combinará con la `baseURL` definida en `playwright.config.ts`.
+    - El `path` se combinará con la `baseURL` definida en `playwright.config.ts`.
 
 2.  **Configurar la Clave de API**
-    * Crea un archivo `.env` en la raíz del proyecto.
-    * Añade tu clave de API de Google AI:
+    - Crea un archivo `.env` en la raíz del proyecto.
+    - Añade tu clave de API de Google AI:
       ```
       GOOGLE_API_KEY="TU_API_KEY_AQUI"
       ```
-    * Asegúrate de que el archivo `.env` esté listado en tu `.gitignore`.
+    - Asegúrate de que el archivo `.env` esté listado en tu `.gitignore`.
 
 3.  **Ejecutar el Orquestador**
-    * Lanza el proceso completo con el siguiente comando:
+    - Lanza el proceso completo con el siguiente comando:
       ```bash
       npm run orchestrate -- <ruta/al/archivo.testcase.json>
       ```
-    * **Ejemplo:**
+    - **Ejemplo:**
       ```bash
       npm run orchestrate -- orchestrator/user-stories/guest-checkout.testcase.json
       ```
@@ -148,6 +148,7 @@ La IA proporciona una primera versión del código. Si el test generado falla de
 3.  **Re-ejecutar:** Vuelve a lanzar el comando `npm run orchestrate`. El sistema ahora usará tu plano corregido para generar el código, y la prueba debería pasar.
 
 ---
+
 ## Estructura del Proyecto
 
 ```
