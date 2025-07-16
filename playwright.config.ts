@@ -31,7 +31,7 @@ export default defineConfig({
     timeout: 10 * 1000, // 10 segundos para las aserciones de expect
   },
   use: {
-    baseURL: 'https://google.com/',
+    baseURL: 'https://ecommerce-playground.lambdatest.io/',
     trace: 'retain-on-failure',
     viewport: { width: 1920, height: 1080 },
     ignoreHTTPSErrors: true,
