@@ -29,7 +29,7 @@ lerna-debug.log*
 /snapshots/
 tests/generated/
 pages/generated/
-knowledge-base/
+knowledge-base
 orchestrator/generated-assets
 # Archivos de compilación de TypeScript
 *.tsbuildinfo
