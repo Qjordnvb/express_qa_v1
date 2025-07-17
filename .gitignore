@@ -2,10 +2,11 @@
 # Dependencias
 node_modules/
 # Playwright
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/.cache/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+snapshots/
 
 
 
@@ -25,12 +26,12 @@ lerna-debug.log*
 .env.production.local
 
 # Reportes y resultados de pruebas
-/html-report
-/snapshots/
+html-report
+snapshots/
 tests/generated/
 pages/generated/
-knowledge-base
-orchestrator/generated-assets
+knowledge-base/
+orchestrator/generated-assets/
 # Archivos de compilación de TypeScript
 *.tsbuildinfo
 dist/

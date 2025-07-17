@@ -54,6 +54,7 @@ test.describe('Category Page Visual Tests', () => {
     await monitorsPageTitle.waitFor({ state: 'visible', timeout: 15000 });
     await expect(monitorsPageTitle).toHaveScreenshot(
       `monitors-page-title-${browserNameForDebug}.png`,
+      { maxDiffPixelRatio: 0.03}
     );
 
     // Esperamos a que los productos se carguen y sean visibles

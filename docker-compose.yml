@@ -1,0 +1,11 @@
+
+
+services:
+  tests:
+    build: .
+    working_dir: /app
+    user: "${HOST_UID}:${HOST_GID}"
+    volumes:
+      - ./playwright-report:/app/playwright-report
+      - ./test-results:/app/test-results
+      - ./snapshots:/app/snapshots

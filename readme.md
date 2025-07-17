@@ -49,49 +49,22 @@ En sistemas Linux, puedes instalar Docker Engine directamente desde la terminal.
 
 ---
 
-## Ejecución de las Pruebas
+### Ejecución de las Pruebas
+¡Ahora usando Docker Compose para máxima compatibilidad y cero problemas de permisos!
 
-Para ejecutar el conjunto de pruebas completo en un entorno limpio y consistente, sigue estos pasos desde la terminal en la raíz del proyecto.
+1. Construir la Imagen de Docker (solo cuando cambies dependencias o Dockerfile)
 
-#### 1. Construir la Imagen de Docker
+docker-compose build o docker compose build depende de tu version de docker
+2. Ejecutar las Pruebas
 
-Este comando crea la imagen del contenedor con todas las dependencias del sistema y del proyecto. Solo necesitas reconstruir la imagen si cambias el `Dockerfile` o las dependencias en `package.json`.
+HOST_UID=$(id -u) HOST_GID=$(id -g) docker-compose run --rm tests
+3. Actualizar los Snapshots Visuales
 
-```bash
-docker build -t express_qa_v1 .
-```
+HOST_UID=$(id -u) HOST_GID=$(id -g) docker-compose run --rm tests npx playwright test --update-snapshots
+4. Ver el Reporte de Pruebas
 
-#### 2. Ejecutar las Pruebas
-
-Este comando inicia un contenedor a partir de la imagen, ejecuta las pruebas y conecta las carpetas clave (reportes, tests, snapshots y resultados de tests) del contenedor a tu máquina local para que puedas ver los resultados.
-
-```bash
-# Para macOS / Linux
-docker run --rm -it \
-  -v $(pwd)/playwright-report:/app/playwright-report \
-  -v $(pwd)/tests:/app/tests \
-  -v $(pwd)/snapshots:/app/snapshots \
-  -v $(pwd)/test-results:/app/test-results \
-  express_qa_v1
-
-# Para Windows (Command Prompt)
-docker run --rm -it ^
-  -v %cd%/playwright-report:/app/playwright-report ^
-  -v %cd%/tests:/app/tests ^
-  -v %cd%/snapshots:/app/snapshots ^
-  -v %cd%/test-results:/app/test-results ^
-  express_qa_v1
-```
-
-#### 3. Ver el Reporte de Pruebas
-
-Una vez que el comando anterior termine, se habrán actualizado las carpetas `playwright-report/` y `test-results/` en tu proyecto. Para ver el reporte HTML interactivo, ejecuta:
-
-```bash
 npx playwright show-report
-```
-
-_(Si el puerto por defecto está en uso, puedes especificar otro: `npx playwright show-report --port 9324`)_
+(Si el puerto por defecto está en uso, puedes especificar otro: npx playwright show-report --port 9324)
 
 ## Estrategia de Pruebas y Fiabilidad
 
@@ -109,6 +82,18 @@ Esta configuración se gestiona en `playwright.config.ts` y se activa automátic
 Este framework incluye un **orquestador de pruebas impulsado por IA** diseñado para acelerar drásticamente la creación de nuevos tests. El sistema puede tomar una historia de usuario y generar un Page Object y un archivo de prueba de Playwright completamente funcionales.
 
 ### Flujo de Trabajo de Generación de Pruebas
+
+> **NOTA:**
+> Si solo vas a ejecutar pruebas ya existentes, basta con Docker (no necesitas Node.js ni `npm install` en tu máquina).
+>
+> Si vas a **crear pruebas nuevas con IA usando el comando `npm run orchestrate -- orchestrator/user-stories/guest-checkout.testcase.json`**, sí necesitas tener Node.js instalado y debes correr:
+>
+> ```bash
+> npm install
+> ```
+>
+> Esto es porque el orquestador se ejecuta directamente en tu entorno local de Node, no en Docker.
+
 
 1.  **Crear un Caso de Prueba (`.testcase.json`)**
     - En la carpeta `orchestrator/user-stories/`, crea un archivo `.json` con la siguiente estructura:
