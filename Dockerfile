@@ -1,18 +1,21 @@
-# Paso 1: Usar la imagen oficial de Playwright que ya incluye Node.js y todas las dependencias del sistema.
+# 1. Usa la imagen oficial de Playwright (trae Node.js y navegadores listos)
 FROM mcr.microsoft.com/playwright:v1.52.0-jammy
 
-# Paso 2: Establecer el directorio de trabajo dentro del contenedor.
+# 2. Establece el directorio de trabajo
 WORKDIR /app
 
-# Paso 3: Copiar los archivos de dependencias.
-COPY package.json ./
-COPY package-lock.json ./
+# 3. Copia primero solo package.json y package-lock.json para aprovechar la cache de Docker
+COPY package.json package-lock.json ./
 
-# Paso 4: Instalar las dependencias de nuestro proyecto (selenium, etc. si las hubiera).
+# 4. Instala dependencias
 RUN npm install
 
-# Paso 5: Copiar todo el código de nuestro framework al contenedor.
+# 5. Copia el resto del código
 COPY . .
 
-# Paso 6: Comando por defecto que se ejecutará cuando iniciemos el contenedor.
+# 6. (Opcional) Permite que otros usuarios escriban en los directorios de resultados y reportes.
+RUN mkdir -p /app/test-results /app/playwright-report /app/snapshots \
+    && chmod -R 777 /app/test-results /app/playwright-report /app/snapshots
+
+# 7. Comando por defecto: ejecuta los tests (se puede sobreescribir desde Docker Compose)
 CMD ["npx", "playwright", "test"]

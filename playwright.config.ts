@@ -32,7 +32,7 @@ export default defineConfig({
   },
   use: {
     baseURL: 'https://ecommerce-playground.lambdatest.io/',
-    trace: 'retain-on-failure',
+    trace: 'on-first-retry',
     viewport: { width: 1920, height: 1080 },
     ignoreHTTPSErrors: true,
     userAgent:
@@ -43,50 +43,26 @@ export default defineConfig({
   /* Configure projects for major browsers */
   projects: [
     {
-      name: 'Google Chrome',
+      name: 'chromium',
       use: {
-           ...devices['Desktop Chrome'],
-           channel: 'chrome',
-           viewport: { width: 1920, height: 1080 }
+        ...devices['Desktop Chromium'],
+        viewport: { width: 1920, height: 1080 }
       }
     },
     {
       name: 'firefox',
       use: {
         ...devices['Desktop Firefox'],
-        channel: 'firefox',
-        viewport: { width: 1920, height: 1080 } },
+        viewport: { width: 1920, height: 1080 }
+      },
     },
-
     {
       name: 'webkit',
       use: {
         ...devices['Desktop Safari'],
-        channel: 'webkit',
         viewport: { width: 1920, height: 1080 }
       }
-
     },
-
-    /* Test against mobile viewports. */
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 5'] },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: { ...devices['iPhone 12'] },
-    // },
-
-    /* Test against branded browsers. */
-    // {
-    //   name: 'Microsoft Edge',
-    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    // },
-    // {
-    //   name: 'Google Chrome',
-    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-    // },
   ],
 
   /* Run your local dev server before starting the tests */
