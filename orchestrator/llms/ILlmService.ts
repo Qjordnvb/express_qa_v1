@@ -1,11 +1,15 @@
-import { AIAsserts } from '../failure-analyzer';
-import { DetectedPattern } from '../ui-pattern-detector';
+// orchestrator/llms/ILlmService.ts
+import { AIResponse } from '../types/types';
 
-// Este es el "contrato" que cualquier servicio de IA debe cumplir.
 export interface ILlmService {
-  getTestAssetsFromIA(
-    userStory: string[],
-    imageBase64: string,
-    detectedPatterns?: DetectedPattern[],
-  ): Promise<AIAsserts | null>;
+  /**
+   * Obtiene los activos de prueba (Page Objects y Pasos de prueba) desde la IA.
+   * Acepta el prompt y una imagen opcional en base64.
+   */
+  getTestAssetsFromIA(content: string, imageBase64?: string): Promise<AIResponse | null>;
+
+  /**
+   * Realiza una consulta genérica a la IA que espera una respuesta JSON.
+   */
+  getStructuredJsonResponse<T>(prompt: string, imageBase64: string): Promise<T | null>;
 }

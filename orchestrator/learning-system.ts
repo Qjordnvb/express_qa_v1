@@ -1,8 +1,11 @@
 // orchestrator/learning-system.ts
-import * as fs from 'fs';
+import { promises as fs } from 'fs';
 import * as path from 'path';
-import { AIAsserts, FailureAnalysis, Locator } from './failure-analyzer';
+import { AIResponse, LocatorDefinition, Selector } from './types/types';
+import { FailureAnalysis, SuggestedFix } from './failure-analyzer';
+import { MemoryService, MemoryRecord } from './services/MemoryService';
 
+// --- Interfaces para la base de conocimiento local (selectors.json) ---
 interface LearnedSelector {
   url: string;
   elementDescription: string;
@@ -12,200 +15,200 @@ interface LearnedSelector {
   successRate: number;
 }
 
-interface TestExecutionHistory {
-  testName: string;
-  timestamp: Date;
-  success: boolean;
-  duration: number;
-  failureAnalysis?: FailureAnalysis;
-  environment: {
-    browser: string;
-    viewport: string;
-    url: string;
-  };
-}
-
-interface Selector {
-  type: string;
-  value: string;
-  options?: Record<string, unknown>;
-}
-
 export class LearningSystem {
   private knowledgeBasePath = path.resolve(__dirname, '../knowledge-base');
   private selectorsDB: Map<string, LearnedSelector> = new Map();
-  private executionHistory: TestExecutionHistory[] = [];
+  private memoryService: MemoryService;
 
   constructor() {
     this.loadKnowledge();
+    this.memoryService = new MemoryService();
+    console.log('📚 Sistema de Aprendizaje inicializado.');
   }
 
-  enhanceAIAssets(aiAssets: AIAsserts, pageUrl: string): AIAsserts {
-    console.log('✨ Mejorando assets con conocimiento previo (Lógica de Autoridad)...');
-    const enhanced: AIAsserts = JSON.parse(JSON.stringify(aiAssets));
+  /**
+   * Mejora los assets de la IA con conocimiento previo de los selectores que funcionan.
+   */
+  public enhanceAIAssets(aiAssets: AIResponse, pageUrl: string): AIResponse {
+    console.log('✨ Mejorando assets con conocimiento previo...');
+    const enhanced: AIResponse = JSON.parse(JSON.stringify(aiAssets));
+    const allPageObjects = [enhanced.pageObject, ...(enhanced.additionalPageObjects || [])];
 
-    for (const locator of enhanced.pageObject.locators) {
-      const key = `${pageUrl}-${locator.name}`;
-      const knowledge = this.selectorsDB.get(key);
+    for (const po of allPageObjects) {
+      for (const locator of po.locators) {
+        const key = `${pageUrl}-${locator.name}`;
+        const knowledge = this.selectorsDB.get(key);
 
-      if (knowledge && knowledge.workingSelectors.length > 0) {
-        console.log(
-          `🧠 Aplicando conocimiento para "${locator.name}". Los selectores que han funcionado se priorizarán.`,
-        );
-        const knownGoodSelectors = knowledge.workingSelectors.map((s) => this.stringToSelector(s));
-        const knownBadSelectors = new Set(knowledge.failedSelectors);
+        if (knowledge && knowledge.workingSelectors.length > 0) {
+          const knownGoodSelectors = knowledge.workingSelectors.map((s) => this.stringToSelector(s));
+          const knownBadSelectors = new Set(knowledge.failedSelectors);
 
-        const candidateSelectors = locator.selectors.filter(
-          (s: Selector) => !knownBadSelectors.has(this.selectorToString(s)),
-        );
+          const candidateSelectors = locator.selectors.filter(
+            (s: Selector) => !knownBadSelectors.has(this.selectorToString(s)),
+          );
 
-        const finalSelectors = [...knownGoodSelectors, ...candidateSelectors];
+          // Prioriza los selectores que han funcionado anteriormente
+          const finalSelectors = [...knownGoodSelectors, ...candidateSelectors];
 
-        locator.selectors = [
-          ...new Map(finalSelectors.map((item) => [this.selectorToString(item), item])).values(),
-        ].slice(0, 5);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (locator as any).metadata = {
-          enhanced: true,
-          confidence: knowledge.successRate,
-          lastSuccess: knowledge.lastUpdated,
-        };
+          // Elimina duplicados y limita a 5 selectores para no sobrecargar
+          locator.selectors = [...new Map(finalSelectors.map((item) => [this.selectorToString(item), item])).values()].slice(0, 5);
+        }
       }
     }
     return enhanced;
   }
 
-  async learnFromSuccess(testName: string, aiAssets: AIAsserts, pageUrl: string): Promise<void> {
-    console.log('🧠 Aprendiendo de ejecución exitosa...');
-    for (const locator of aiAssets.pageObject.locators) {
-      const key = `${pageUrl}-${locator.name}`;
-      const existing = this.selectorsDB.get(key) || this.createNewEntry(pageUrl, locator.name);
-
-      if (locator.selectors.length > 0) {
-        const winningSelector = this.selectorToString(locator.selectors[0]);
-
-        if (!existing.workingSelectors.includes(winningSelector)) {
-          existing.workingSelectors.unshift(winningSelector);
-        }
-
-        const indexInFailed = existing.failedSelectors.indexOf(winningSelector);
-        if (indexInFailed > -1) {
-          existing.failedSelectors.splice(indexInFailed, 1);
-        }
-      }
-      existing.successRate = this.calculateSuccessRate(existing);
-      existing.lastUpdated = new Date();
-      this.selectorsDB.set(key, existing);
-    }
-
-    this.executionHistory.push({
-      testName,
-      timestamp: new Date(),
-      success: true,
-      duration: 0, // Se puede añadir en el futuro
-      environment: this.captureEnvironment(pageUrl),
-    });
-
-    this.saveKnowledge();
-  }
-
-  async learnFromFailure(
+  /**
+   * Aprende de una ejecución de prueba exitosa, registrando los selectores que funcionaron.
+   * Si el éxito fue resultado de una reparación, lo guarda en la memoria vectorial.
+   */
+  public async learnFromSuccess(
     testName: string,
-    analysis: FailureAnalysis,
-    aiAssets: AIAsserts,
+    aiAssets: AIResponse,
     pageUrl: string,
+    analysis?: FailureAnalysis
   ): Promise<void> {
-    console.log('🧠 Registrando fallo en la base de conocimiento...');
-    const locatorNameMatch = analysis.failedStep.match(
-      /^(?:click|fill|waitFor|assert|check|select|clear|get|is)(\w+)/i,
-    );
+    console.log('🧠 Aprendiendo de ejecución exitosa...');
+    let memoryRecord: MemoryRecord;
 
-    if (locatorNameMatch && locatorNameMatch[1]) {
-      const elementName =
-        locatorNameMatch[1].charAt(0).toLowerCase() + locatorNameMatch[1].slice(1);
-      const key = `${pageUrl}-${elementName}`;
-      const existing = this.selectorsDB.get(key) || this.createNewEntry(pageUrl, elementName);
-      const locatorData = aiAssets.pageObject.locators.find(
-        (loc: Locator) => loc.name === elementName,
+    if (analysis) {
+      // Caso 1: El éxito vino después de una reparación
+      const successfulFix = analysis.suggestedFixes.find(
+        (fix): fix is Extract<SuggestedFix, { type: 'selector_repair' }> =>
+          fix.type === 'selector_repair' && fix.repaired
       );
 
-      if (locatorData && locatorData.selectors.length > 0) {
-        const failedSelector = this.selectorToString(locatorData.selectors[0]);
-        if (!existing.failedSelectors.includes(failedSelector)) {
-          existing.failedSelectors.push(failedSelector);
-          console.log(`🔴 Registrando selector fallido para "${elementName}": ${failedSelector}`);
-        }
+      if (successfulFix) {
+        console.log('...registrando reparación exitosa en la memoria vectorial.');
+        memoryRecord = {
+          testName: testName,
+          failureContext: analysis.errorMessage, // Guardamos el error original
+          repairedSelector: {
+            originalSelector: successfulFix.originalSelector,
+            newSelector: successfulFix.newSelector,
+            elementName: successfulFix.elementName,
+          },
+          url: pageUrl,
+        };
+        await this.memoryService.saveSuccessfulRepair(memoryRecord);
       }
-      existing.successRate = this.calculateSuccessRate(existing);
-      existing.lastUpdated = new Date();
-      this.selectorsDB.set(key, existing);
+    } else {
+      // Caso 2: El éxito fue en el primer intento (NUEVA LÓGICA)
+      console.log('...registrando éxito simple en la memoria vectorial.');
+      memoryRecord = {
+        testName: testName,
+        failureContext: 'Ejecución exitosa en el primer intento.', // Contexto genérico de éxito
+        repairedSelector: {
+          elementName: 'N/A',
+          originalSelector: 'N/A',
+          newSelector: 'N/A',
+        },
+        url: pageUrl,
+      };
+      await this.memoryService.saveSuccessfulRepair(memoryRecord);
     }
-    this.executionHistory.push({
-      testName,
-      timestamp: new Date(),
-      success: false,
-      duration: 0,
-      failureAnalysis: analysis,
-      environment: this.captureEnvironment(pageUrl),
-    });
-    this.saveKnowledge();
+
+    await this.saveKnowledge();
+  }
+
+  /**
+   * Aprende de un fallo, registrando los selectores que no funcionaron.
+   */
+  public async learnFromFailure(
+    aiAssets: AIResponse,
+    pageUrl: string,
+  ): Promise<void> {
+    console.log('🧠 Registrando fallo en la base de conocimiento local...');
+    this.updateSelectorsDB(aiAssets, pageUrl, false);
+    await this.saveKnowledge();
+  }
+
+  // --- Métodos Privados ---
+
+  private updateSelectorsDB(aiAssets: AIResponse, pageUrl: string, success: boolean): void {
+    const allPageObjects = [aiAssets.pageObject, ...(aiAssets.additionalPageObjects || [])];
+
+    for (const po of allPageObjects) {
+        for (const locator of po.locators) {
+            if (locator.selectors.length === 0) continue;
+
+            const key = `${pageUrl}-${locator.name}`;
+            const entry = this.selectorsDB.get(key) || this.createNewEntry(pageUrl, locator.name);
+            const primarySelector = this.selectorToString(locator.selectors[0]);
+
+            if (success) {
+                if (!entry.workingSelectors.includes(primarySelector)) {
+                    entry.workingSelectors.unshift(primarySelector);
+                }
+                const failIndex = entry.failedSelectors.indexOf(primarySelector);
+                if (failIndex > -1) entry.failedSelectors.splice(failIndex, 1);
+            } else {
+                if (!entry.failedSelectors.includes(primarySelector)) {
+                    entry.failedSelectors.push(primarySelector);
+                }
+            }
+            entry.successRate = this.calculateSuccessRate(entry);
+            entry.lastUpdated = new Date();
+            this.selectorsDB.set(key, entry);
+        }
+    }
   }
 
   private createNewEntry(url: string, elementName: string): LearnedSelector {
     return {
-      url,
-      elementDescription: elementName,
-      workingSelectors: [],
-      failedSelectors: [],
-      lastUpdated: new Date(),
-      successRate: 100,
+        url,
+        elementDescription: elementName,
+        workingSelectors: [],
+        failedSelectors: [],
+        lastUpdated: new Date(),
+        successRate: 100,
     };
   }
+
   private selectorToString(selector: Selector): string {
     const options = selector.options ? JSON.stringify(selector.options) : '';
     return `${selector.type}:${selector.value}${options}`;
   }
+
   private stringToSelector(str: string): Selector {
-    const [type, valueAndOptions] = str.split(/:(.*)/s);
+    const [type, ...valueParts] = str.split(/:(.*)/s);
+    const valueAndOptions = valueParts[0] || '';
     try {
-      const parsed = JSON.parse(valueAndOptions);
-      if (parsed.value && parsed.options) {
-        return { type, value: parsed.value, options: parsed.options };
-      }
-    } catch (e) {
-      // No es un objeto JSON complejo, es un valor simple
-    }
+        const parsed = JSON.parse(valueAndOptions);
+        if (typeof parsed === 'object' && parsed !== null && 'value' in parsed) {
+            return { type, value: parsed.value, options: parsed.options };
+        }
+    } catch (e) { /* No es un objeto JSON */ }
     return { type, value: valueAndOptions };
   }
+
   private calculateSuccessRate(entry: LearnedSelector): number {
     const total = entry.workingSelectors.length + entry.failedSelectors.length;
-    return total > 0 ? (entry.workingSelectors.length / total) * 100 : 100;
-  }
-  private captureEnvironment(url: string): TestExecutionHistory['environment'] {
-    return { browser: process.env.BROWSER || 'chromium', viewport: '1280x720', url: url };
+    return total > 0 ? Math.round((entry.workingSelectors.length / total) * 100) : 100;
   }
 
-  private loadKnowledge(): void {
+  private async loadKnowledge(): Promise<void> {
+    const selectorsPath = path.join(this.knowledgeBasePath, 'selectors.json');
     try {
-      const selectorsPath = path.join(this.knowledgeBasePath, 'selectors.json');
-      if (fs.existsSync(selectorsPath)) {
-        const data = fs.readFileSync(selectorsPath, 'utf8');
-        this.selectorsDB = new Map(Object.entries(JSON.parse(data)));
-      }
+      await fs.access(selectorsPath);
+      const data = await fs.readFile(selectorsPath, 'utf8');
+      this.selectorsDB = new Map(Object.entries(JSON.parse(data)));
     } catch (error) {
-      console.log('No se pudo cargar conocimiento previo, iniciando desde cero.');
+      console.log('No se pudo cargar la base de conocimiento local, iniciando desde cero.');
       this.selectorsDB = new Map();
     }
   }
 
-  private saveKnowledge(): void {
-    if (!fs.existsSync(this.knowledgeBasePath)) {
-      fs.mkdirSync(this.knowledgeBasePath, { recursive: true });
+  private async saveKnowledge(): Promise<void> {
+    try {
+      await fs.mkdir(this.knowledgeBasePath, { recursive: true });
+      const selectorsObj = Object.fromEntries(this.selectorsDB);
+      await fs.writeFile(
+        path.join(this.knowledgeBasePath, 'selectors.json'),
+        JSON.stringify(selectorsObj, null, 2),
+      );
+    } catch (e) {
+      console.error("Error al guardar la base de conocimiento local:", e);
     }
-    const selectorsObj = Object.fromEntries(this.selectorsDB);
-    fs.writeFileSync(
-      path.join(this.knowledgeBasePath, 'selectors.json'),
-      JSON.stringify(selectorsObj, null, 2),
-    );
   }
 }

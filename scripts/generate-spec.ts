@@ -112,85 +112,85 @@ testSteps.forEach((step, index) => {
 });
 
 const specSteps = testSteps.map((step, index) => {
-  let className = step.page;
-  const isMultiPageTest = uniqueClassNames.length > 1;
+ let className = step.page;
+ const isMultiPageTest = uniqueClassNames.length > 1;
 
-  // --- LÓGICA MEJORADA PARA DETERMINAR LA PÁGINA ---
-  // Si la página no está definida en el paso...
-  if (!className) {
-    // Y si es un test de una sola página, asumimos que es esa única página.
-    if (!isMultiPageTest) {
-      className = uniqueClassNames[0];
-    } else {
-      // Si es multi-página y no se especifica, es un error y se omite.
-      console.warn(
-        `[ADVERTENCIA] El paso de prueba '${step.action}' en un test multi-página no especifica a qué página pertenece. Se omitirá.`
-      );
-      return `// Paso omitido: 'page' no especificada en test multi-página.`;
-    }
+ if (!className) {
+ if (!isMultiPageTest) {
+  className = uniqueClassNames[0];
+ } else {
+        // --- VALIDACIÓN ESTRICTA #1 ---
+        // Si es multi-página y no se especifica, es un error fatal.
+  console.error(`\n❌ [ERROR FATAL] El paso de prueba ${index + 1} ('${step.action}') en un test multi-página no especifica a qué página pertenece. La prueba no se generará.`);
+        process.exit(1);
+ }
+ } else if (!uniqueClassNames.includes(className)) {
+      // --- VALIDACIÓN ESTRICTA #2 ---
+      // Si la página especificada no existe en los Page Objects, es un error fatal.
+ console.error(`\n❌ [ERROR FATAL] El paso de prueba ${index + 1} ('${step.action}') apunta a una página inválida ('${className}') que no fue generada. La prueba no se generará.`);
+      process.exit(1);
+ }
+
+ const methodName = step.action;
+ const instanceName = `${className.charAt(0).toLowerCase()}${className.slice(1)}`;
+ const params = Array.isArray(step.params) ? step.params : [];
+ const paramsString = params.map(p => JSON.stringify(p)).join(', ');
+
+ let stepCode = `// Paso ${index + 1}: ${methodName} en la página ${className}\n`;
+
+    // --- VALIDACIÓN ESTRICTA #3 (LA MÁS IMPORTANTE) ---
+    // Comprobamos si el método realmente existe en el archivo del Page Object.
+ if (!pomMethodsByClass[className] || !pomMethodsByClass[className].includes(methodName)) {
+  console.error(`\n\n❌ [ERROR FATAL DE CONTEXTO]`);
+  console.error(`  No se pudo generar la prueba debido a una inconsistencia crítica.\n`);
+  console.error(`  PROBLEMA:`);
+  console.error(`    El paso de prueba #${index + 1} requiere el método '${methodName}', pero este NO EXISTE en el Page Object '${className}'.\n`);
+  console.error(`  CAUSA MÁS PROBABLE:`);
+  console.error(`    La URL base en tu 'playwright.config.ts' no coincide con el sitio web de tu historia de usuario.`);
+  console.error(`    (Ej: La URL apunta a un e-commerce pero la historia de usuario describe un login de Google).\n`);
+  console.error(`  ACCIÓN RECOMENDADA:`);
+  console.error(`    Asegúrate de que la 'baseURL' en 'playwright.config.ts' sea la correcta para este test.`);
+  process.exit(1);
+}
+
+    // Si todas las validaciones pasan, generamos el código.
+ if (methodName.toLowerCase().includes('navigate')) {
+ stepCode += `await ${instanceName}.navigate(${JSON.stringify(testCase.path)});`;
+ } else {
+ stepCode += `await ${instanceName}.${methodName}(${paramsString});`;
+ }
+
+ if (step.assert) {
+ switch (step.assert.type) {
+  case 'textVisible':
+  stepCode += `\nawait expect(page.locator('body')).toContainText(${JSON.stringify(
+   step.assert.expected
+  )});`;
+  break;
+  case 'urlContains': {
+  const expectedString = String(step.assert.expected).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  stepCode += `\nawait expect(page).toHaveURL(new RegExp('.*' + ${JSON.stringify(
+   expectedString
+  )} + '.*'));`;
+  break;
   }
-  // Si la página está definida pero no existe, también se omite.
-  else if (!uniqueClassNames.includes(className)) {
-    console.warn(
-      `[ADVERTENCIA] El paso de prueba '${step.action}' tiene una propiedad 'page' inválida ('${className}'). Se omitirá.`
-    );
-    return `// Paso omitido por 'page' inválida: ${JSON.stringify(step)}`;
+  case 'oneOf': {
+  const options = (step.assert.expectedOptions || [])
+   .map(opt => JSON.stringify(opt))
+   .join(', ');
+          // Esta línea parece incorrecta, ya que llama al mismo método de acción.
+          // La lógica de aserción 'oneOf' probablemente debería estar en un método separado en el POM.
+          // Por ahora, lo mantenemos como está para no introducir más cambios, pero es un punto a revisar.
+  stepCode += `\nawait ${instanceName}.${methodName}([${options}]);`;
+  break;
   }
+  default:
+  console.warn(`[ADVERTENCIA] Tipo de aserción no reconocido: ${step.assert.type}`);
+ }
+ }
 
-  const methodName = step.action;
-  const instanceName = `${className.charAt(0).toLowerCase()}${className.slice(1)}`;
-  const params = Array.isArray(step.params) ? step.params : [];
-  const paramsString = params.map(p => JSON.stringify(p)).join(', ');
-
-  let stepCode = `    // Paso ${index + 1}: ${methodName} en la página ${className}\n`;
-
-  // --- LÓGICA DE VALIDACIÓN Y GENERACIÓN DE CÓDIGO ---
-
-  // Se mantiene la validación para asegurar que el método fue generado correctamente en el POM.
-  // El método 'navigate' se maneja aquí porque ahora tenemos un 'className' válido.
-  if (!pomMethodsByClass[className].includes(methodName)) {
-    console.warn(
-      `[ADVERTENCIA] El método '${methodName}' llamado en el paso ${index + 1} no existe en el Page Object '${className}'. Paso omitido.`
-    );
-    return `// Paso omitido: método '${methodName}' no existe en '${className}'`;
-  }
-
-  if (methodName.toLowerCase().includes('navigate')) {
-    stepCode += `    await ${instanceName}.navigate(${JSON.stringify(testCase.path)});`;
-  } else {
-    stepCode += `    await ${instanceName}.${methodName}(${paramsString});`;
-  }
-
-  // LÓGICA DE ASERCIÓN
-  if (step.assert) {
-    switch (step.assert.type) {
-      case 'textVisible':
-        stepCode += `\n    await expect(page.locator('body')).toContainText(${JSON.stringify(
-          step.assert.expected
-        )});`;
-        break;
-      case 'urlContains': {
-        const expectedString = String(step.assert.expected).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        stepCode += `\n    await expect(page).toHaveURL(new RegExp('.*' + ${JSON.stringify(
-          expectedString
-        )} + '.*'));`;
-        break;
-      }
-      case 'oneOf': {
-        const options = (step.assert.expectedOptions || [])
-          .map(opt => JSON.stringify(opt))
-          .join(', ');
-        stepCode += `\n    await ${instanceName}.${methodName}([${options}]);`;
-        break;
-      }
-      default:
-        console.warn(`[ADVERTENCIA] Tipo de aserción no reconocido: ${step.assert.type}`);
-    }
-  }
-
-  return stepCode;
-}).join('\n');
-
+ return stepCode;
+  }).join('\n');
 
 const template = `// tests/generated/${testFileName}.spec.ts
 // Archivo de prueba multi-página generado automáticamente.
