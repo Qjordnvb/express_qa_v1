@@ -31,38 +31,50 @@ export default defineConfig({
     timeout: 10 * 1000, // 10 segundos para las aserciones de expect
   },
   use: {
-    baseURL: 'https://ecommerce-playground.lambdatest.io/',
+    baseURL: 'https://admin-dev.membeers.com',
     trace: 'on-first-retry',
     viewport: { width: 1920, height: 1080 },
     ignoreHTTPSErrors: true,
-    userAgent:
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36',
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
+
   },
 
   /* Configure projects for major browsers */
   projects: [
     {
       name: 'chromium',
-      use: {
-        ...devices['Desktop Chromium'],
-        viewport: { width: 1920, height: 1080 }
-      }
+      use: { ...devices['Desktop Chrome'] },
     },
+
     {
       name: 'firefox',
-      use: {
-        ...devices['Desktop Firefox'],
-        viewport: { width: 1920, height: 1080 }
-      },
+      use: { ...devices['Desktop Firefox'] },
     },
+
     {
       name: 'webkit',
-      use: {
-        ...devices['Desktop Safari'],
-        viewport: { width: 1920, height: 1080 }
-      }
+      use: { ...devices['Desktop Safari'] },
     },
+
+    /* Test against mobile viewports. */
+    // {
+    //   name: 'Mobile Chrome',
+    //   use: { ...devices['Pixel 5'] },
+    // },
+    // {
+    //   name: 'Mobile Safari',
+    //   use: { ...devices['iPhone 12'] },
+    // },
+
+    /* Test against branded browsers. */
+    // {
+    //   name: 'Microsoft Edge',
+    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
+    // },
+    // {
+    //   name: 'Google Chrome',
+    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
+    // },
   ],
 
   /* Run your local dev server before starting the tests */

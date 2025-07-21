@@ -1,11 +1,11 @@
 {
   "name": "Login exitoso y redireccion al home",
-  "path": "/index.php?route=account/login",
+  "path": "/",
   "userStory": [
-    "DADO que estoy en la página de login",
-    "CUANDO ingreso mi email 'jordanvillarreal1994@gmail.com'",
-    "Y ingreso mi password '12345678'",
-    "Y hago clic en el botón 'Login'",
-    "ENTONCES debo ser redirigido a /account"
-  ]
+    "DADO que navego a la página de login de membeer",
+    "CUANDO ingreso mi email 'admin@serempre.com' en el campo de Email",
+    "Y ingreso mi password '9nZ98£FQ6i,G' en el campo de contraseña",
+    "Y hago clic en el botón 'Continuar'",
+    "ENTONCES debo ser redirigido a /dashboard"
+]
 }
