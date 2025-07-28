@@ -14,6 +14,10 @@ export interface MemoryRecord {
     elementName: string;
   };
   url: string;               // La URL donde ocurrió el fallo
+  // <-- INICIO DE LA CORRECCIÓN: Tipos añadidos
+  newSelector?: string;
+  repaired?: boolean;
+  // <-- FIN DE LA CORRECCIÓN
 }
 
 /**

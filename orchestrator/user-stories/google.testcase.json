@@ -1,10 +1,10 @@
 {
-  "name": "Simple Google Search Test",
+  "name": "Búsqueda en Google",
   "path": "/",
   "userStory": [
     "DADO que estoy en la página principal de Google",
-    "CUANDO escribo 'Playwright' en el campo de búsqueda",
-    "Y presiono Enter",
-    "ENTONCES la página de resultados debe mostrar el texto 'Playwright'"
+    "CUANDO escribo 'Playwright testing' en el campo de búsqueda",
+    "Y hago clic en el botón de búsqueda",
+    "ENTONCES debería ver resultados de búsqueda relacionados con Playwright"
   ]
 }
