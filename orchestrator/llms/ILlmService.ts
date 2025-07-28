@@ -1,15 +1,14 @@
 // orchestrator/llms/ILlmService.ts
 import { AIResponse } from '../types/types';
 
-export interface ILlmService {
-  /**
-   * Obtiene los activos de prueba (Page Objects y Pasos de prueba) desde la IA.
-   * Acepta el prompt y una imagen opcional en base64.
-   */
-  getTestAssetsFromIA(content: string, imageBase64?: string): Promise<AIResponse | null>;
+// <-- NUEVO: Definimos la estructura de la respuesta del análisis de fallo
+export interface AIFailureAnalysis {
+  rootCause: string;
+  repairSuggestion: string;
+}
 
-  /**
-   * Realiza una consulta genérica a la IA que espera una respuesta JSON.
-   */
-  getStructuredJsonResponse<T>(prompt: string, imageBase64: string): Promise<T | null>;
+export interface ILlmService {
+  getTestAssetsFromIA(prompt: string, imageBase64: string): Promise<AIResponse | null>;
+  // <-- NUEVO: Añade la firma de este nuevo método
+  getFailureAnalysisFromIA(prompt: string): Promise<AIFailureAnalysis | null>;
 }

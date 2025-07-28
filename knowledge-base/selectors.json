@@ -95,9 +95,11 @@
     "workingSelectors": [
       "getByLabel:Email"
     ],
-    "failedSelectors": [],
-    "lastUpdated": "2025-07-20T22:00:49.346Z",
-    "successRate": 100
+    "failedSelectors": [
+      "getByLabel:Email"
+    ],
+    "lastUpdated": "2025-07-28T01:07:55.065Z",
+    "successRate": 50
   },
   "https://admin-dev.membeers.com/-passwordInput": {
     "url": "https://admin-dev.membeers.com/",
@@ -105,9 +107,11 @@
     "workingSelectors": [
       "getByLabel:Contraseña"
     ],
-    "failedSelectors": [],
-    "lastUpdated": "2025-07-20T22:00:49.346Z",
-    "successRate": 100
+    "failedSelectors": [
+      "getByLabel:Contraseña"
+    ],
+    "lastUpdated": "2025-07-28T01:07:55.065Z",
+    "successRate": 50
   },
   "https://admin-dev.membeers.com/-continueButton": {
     "url": "https://admin-dev.membeers.com/",
@@ -115,8 +119,53 @@
     "workingSelectors": [
       "getByRole:button{\"name\":\"Continuar\"}"
     ],
-    "failedSelectors": [],
-    "lastUpdated": "2025-07-20T22:00:49.346Z",
-    "successRate": 100
+    "failedSelectors": [
+      "getByRole:button{\"name\":\"Continuar\"}"
+    ],
+    "lastUpdated": "2025-07-28T01:07:55.065Z",
+    "successRate": 50
+  },
+  "https://admin-dev.membeers.com/-loginButton": {
+    "url": "https://admin-dev.membeers.com/",
+    "elementDescription": "loginButton",
+    "workingSelectors": [],
+    "failedSelectors": [
+      "getByRole:button{\"name\":\"Continuar\"}"
+    ],
+    "lastUpdated": "2025-07-27T17:58:02.262Z",
+    "successRate": 0
+  },
+  "https://admin-dev.membeers.com/-errorMessage": {
+    "url": "https://admin-dev.membeers.com/",
+    "elementDescription": "errorMessage",
+    "workingSelectors": [],
+    "failedSelectors": [
+      "css:.error-message"
+    ],
+    "lastUpdated": "2025-07-27T17:58:02.262Z",
+    "successRate": 0
+  },
+  "https://www.google.com/-searchInput": {
+    "url": "https://www.google.com/",
+    "elementDescription": "searchInput",
+    "workingSelectors": [],
+    "failedSelectors": [
+      "getByRole:textbox{\"name\":\"Buscar\"}",
+      "css:input[name='q']",
+      "getByRole:search{\"name\":\"- search :\"}",
+      "getByRole:combobox{\"name\":\"Buscar\"}"
+    ],
+    "lastUpdated": "2025-07-28T04:23:18.398Z",
+    "successRate": 0
+  },
+  "https://www.google.com/-searchButton": {
+    "url": "https://www.google.com/",
+    "elementDescription": "searchButton",
+    "workingSelectors": [],
+    "failedSelectors": [
+      "getByRole:button{\"name\":\"Buscar con Google\"}"
+    ],
+    "lastUpdated": "2025-07-28T04:23:18.398Z",
+    "successRate": 0
   }
 }

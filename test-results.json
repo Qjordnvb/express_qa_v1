@@ -1,0 +1,380 @@
+{
+  "config": {
+    "configFile": "/home/jordan/proyectos/express_qa_v1/playwright.config.ts",
+    "rootDir": "/home/jordan/proyectos/express_qa_v1/tests",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 3
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/home/jordan/proyectos/express_qa_v1/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 3
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/home/jordan/proyectos/express_qa_v1/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/jordan/proyectos/express_qa_v1/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 3
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/home/jordan/proyectos/express_qa_v1/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/jordan/proyectos/express_qa_v1/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 3
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "/home/jordan/proyectos/express_qa_v1/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.54.1",
+    "workers": 8,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "generated/prueba-de-fallo-nativo-sprint-3.spec.ts",
+      "file": "generated/prueba-de-fallo-nativo-sprint-3.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Prueba de Fallo Nativo Sprint 3",
+          "file": "generated/prueba-de-fallo-nativo-sprint-3.spec.ts",
+          "line": 7,
+          "column": 8,
+          "specs": [
+            {
+              "title": "Flujo completo de la historia de usuario",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 27907,
+                      "error": {
+                        "message": "Error: No se pudo encontrar el elemento: error Message. Probados 3 selectores.",
+                        "stack": "Error: No se pudo encontrar el elemento: error Message. Probados 3 selectores.\n    at MembeerLoginPage.findSmartly (/home/jordan/proyectos/express_qa_v1/pages/BasePage.ts:97:13)\n    at MembeerLoginPage.waitForErrorMessageVisible (/home/jordan/proyectos/express_qa_v1/pages/generated/MembeerLoginPage.ts:166:21)\n    at /home/jordan/proyectos/express_qa_v1/tests/generated/prueba-de-fallo-nativo-sprint-3.spec.ts:31:1",
+                        "location": {
+                          "file": "/home/jordan/proyectos/express_qa_v1/pages/BasePage.ts",
+                          "column": 13,
+                          "line": 97
+                        },
+                        "snippet": "\u001b[90m   at \u001b[39m../pages/BasePage.ts:97\n\n   95 |       // Guardar información detallada del fallo\n   96 |       await this.saveDebugInfo(description, attempts);\n>  97 |       throw new Error(\n      |             ^\n   98 |         `No se pudo encontrar el elemento: ${description}. Probados ${locators.length} selectores.`,\n   99 |       );\n  100 |     }"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/jordan/proyectos/express_qa_v1/pages/BasePage.ts",
+                            "column": 13,
+                            "line": 97
+                          },
+                          "message": "Error: No se pudo encontrar el elemento: error Message. Probados 3 selectores.\n\n   at ../pages/BasePage.ts:97\n\n   95 |       // Guardar información detallada del fallo\n   96 |       await this.saveDebugInfo(description, attempts);\n>  97 |       throw new Error(\n      |             ^\n   98 |         `No se pudo encontrar el elemento: ${description}. Probados ${locators.length} selectores.`,\n   99 |       );\n  100 |     }\n    at MembeerLoginPage.findSmartly (/home/jordan/proyectos/express_qa_v1/pages/BasePage.ts:97:13)\n    at MembeerLoginPage.waitForErrorMessageVisible (/home/jordan/proyectos/express_qa_v1/pages/generated/MembeerLoginPage.ts:166:21)\n    at /home/jordan/proyectos/express_qa_v1/tests/generated/prueba-de-fallo-nativo-sprint-3.spec.ts:31:1"
+                        }
+                      ],
+                      "stdout": [
+                        {
+                          "text": "email Input llenado con: \"usuario@prueba.com\"\n"
+                        },
+                        {
+                          "text": "password Input llenado con: \"password-incorrecto\"\n"
+                        },
+                        {
+                          "text": "Clic realizado en login Button\n"
+                        },
+                        {
+                          "text": "🔄 Ningún selector inmediato funcionó para error Message. Esperando...\n"
+                        },
+                        {
+                          "text": "💾 Debug info guardada en: test-results/debug/error Message-2025-07-27T06-33-37-173Z.json\n"
+                        },
+                        {
+                          "text": "[DEBUG] Captura de pantalla de fallo guardada en: /home/jordan/proyectos/express_qa_v1/test-results/failures/flujo_completo_de_la_historia_de_usuario_2025-07-27T06-33-37.177Z_screenshot.png\n"
+                        }
+                      ],
+                      "stderr": [
+                        {
+                          "text": ":x: Fallo detectado en el flujo de prueba: Error: No se pudo encontrar el elemento: error Message. Probados 3 selectores.\n    at MembeerLoginPage.findSmartly \u001b[90m(/home/jordan/proyectos/express_qa_v1/\u001b[39mpages/BasePage.ts:97:13\u001b[90m)\u001b[39m\n    at MembeerLoginPage.waitForErrorMessageVisible \u001b[90m(/home/jordan/proyectos/express_qa_v1/\u001b[39mpages/generated/MembeerLoginPage.ts:166:21\u001b[90m)\u001b[39m\n    at \u001b[90m/home/jordan/proyectos/express_qa_v1/\u001b[39mtests/generated/prueba-de-fallo-nativo-sprint-3.spec.ts:31:1\n    at \u001b[90m/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/worker/workerMain.js:304:9\n    at \u001b[90m/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/worker/testInfo.js:289:11\n    at TimeoutManager.withRunnable \u001b[90m(/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/worker/timeoutManager.js:67:14\u001b[90m)\u001b[39m\n    at TestInfoImpl._runWithTimeout \u001b[90m(/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/worker/testInfo.js:287:7\u001b[90m)\u001b[39m\n    at \u001b[90m/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/worker/workerMain.js:302:7\n    at WorkerMain._runTest \u001b[90m(/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/worker/workerMain.js:277:5\u001b[90m)\u001b[39m\n    at WorkerMain.runTestGroup \u001b[90m(/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/worker/workerMain.js:193:11\u001b[90m)\u001b[39m\n    at process.<anonymous> \u001b[90m(/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/common/process.js:65:22\u001b[90m)\u001b[39m\n"
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2025-07-27T06:33:09.374Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/home/jordan/proyectos/express_qa_v1/test-results/generated-prueba-de-fallo--c1224-o-de-la-historia-de-usuario-chromium/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/jordan/proyectos/express_qa_v1/pages/BasePage.ts",
+                        "column": 13,
+                        "line": 97
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "4aa74a0f2d5f0b366338-6c43f755dcec6982bfe5",
+              "file": "generated/prueba-de-fallo-nativo-sprint-3.spec.ts",
+              "line": 16,
+              "column": 9
+            },
+            {
+              "title": "Flujo completo de la historia de usuario",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "failed",
+                      "duration": 28658,
+                      "error": {
+                        "message": "Error: No se pudo encontrar el elemento: error Message. Probados 3 selectores.",
+                        "stack": "Error: No se pudo encontrar el elemento: error Message. Probados 3 selectores.\n    at MembeerLoginPage.findSmartly (/home/jordan/proyectos/express_qa_v1/pages/BasePage.ts:97:13)\n    at MembeerLoginPage.waitForErrorMessageVisible (/home/jordan/proyectos/express_qa_v1/pages/generated/MembeerLoginPage.ts:166:21)\n    at /home/jordan/proyectos/express_qa_v1/tests/generated/prueba-de-fallo-nativo-sprint-3.spec.ts:31:1",
+                        "location": {
+                          "file": "/home/jordan/proyectos/express_qa_v1/pages/BasePage.ts",
+                          "column": 13,
+                          "line": 97
+                        },
+                        "snippet": "\u001b[90m   at \u001b[39m../pages/BasePage.ts:97\n\n   95 |       // Guardar información detallada del fallo\n   96 |       await this.saveDebugInfo(description, attempts);\n>  97 |       throw new Error(\n      |             ^\n   98 |         `No se pudo encontrar el elemento: ${description}. Probados ${locators.length} selectores.`,\n   99 |       );\n  100 |     }"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/jordan/proyectos/express_qa_v1/pages/BasePage.ts",
+                            "column": 13,
+                            "line": 97
+                          },
+                          "message": "Error: No se pudo encontrar el elemento: error Message. Probados 3 selectores.\n\n   at ../pages/BasePage.ts:97\n\n   95 |       // Guardar información detallada del fallo\n   96 |       await this.saveDebugInfo(description, attempts);\n>  97 |       throw new Error(\n      |             ^\n   98 |         `No se pudo encontrar el elemento: ${description}. Probados ${locators.length} selectores.`,\n   99 |       );\n  100 |     }\n    at MembeerLoginPage.findSmartly (/home/jordan/proyectos/express_qa_v1/pages/BasePage.ts:97:13)\n    at MembeerLoginPage.waitForErrorMessageVisible (/home/jordan/proyectos/express_qa_v1/pages/generated/MembeerLoginPage.ts:166:21)\n    at /home/jordan/proyectos/express_qa_v1/tests/generated/prueba-de-fallo-nativo-sprint-3.spec.ts:31:1"
+                        }
+                      ],
+                      "stdout": [
+                        {
+                          "text": "email Input llenado con: \"usuario@prueba.com\"\n"
+                        },
+                        {
+                          "text": "password Input llenado con: \"password-incorrecto\"\n"
+                        },
+                        {
+                          "text": "Clic realizado en login Button\n"
+                        },
+                        {
+                          "text": "🔄 Ningún selector inmediato funcionó para error Message. Esperando...\n"
+                        },
+                        {
+                          "text": "💾 Debug info guardada en: test-results/debug/error Message-2025-07-27T06-33-38-336Z.json\n"
+                        },
+                        {
+                          "text": "[DEBUG] Captura de pantalla de fallo guardada en: /home/jordan/proyectos/express_qa_v1/test-results/failures/flujo_completo_de_la_historia_de_usuario_2025-07-27T06-33-38.343Z_screenshot.png\n"
+                        }
+                      ],
+                      "stderr": [
+                        {
+                          "text": ":x: Fallo detectado en el flujo de prueba: Error: No se pudo encontrar el elemento: error Message. Probados 3 selectores.\n    at MembeerLoginPage.findSmartly \u001b[90m(/home/jordan/proyectos/express_qa_v1/\u001b[39mpages/BasePage.ts:97:13\u001b[90m)\u001b[39m\n    at MembeerLoginPage.waitForErrorMessageVisible \u001b[90m(/home/jordan/proyectos/express_qa_v1/\u001b[39mpages/generated/MembeerLoginPage.ts:166:21\u001b[90m)\u001b[39m\n    at \u001b[90m/home/jordan/proyectos/express_qa_v1/\u001b[39mtests/generated/prueba-de-fallo-nativo-sprint-3.spec.ts:31:1\n    at \u001b[90m/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/worker/workerMain.js:304:9\n    at \u001b[90m/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/worker/testInfo.js:289:11\n    at TimeoutManager.withRunnable \u001b[90m(/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/worker/timeoutManager.js:67:14\u001b[90m)\u001b[39m\n    at TestInfoImpl._runWithTimeout \u001b[90m(/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/worker/testInfo.js:287:7\u001b[90m)\u001b[39m\n    at \u001b[90m/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/worker/workerMain.js:302:7\n    at WorkerMain._runTest \u001b[90m(/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/worker/workerMain.js:277:5\u001b[90m)\u001b[39m\n    at WorkerMain.runTestGroup \u001b[90m(/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/worker/workerMain.js:193:11\u001b[90m)\u001b[39m\n    at process.<anonymous> \u001b[90m(/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/common/process.js:65:22\u001b[90m)\u001b[39m\n"
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2025-07-27T06:33:09.388Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/home/jordan/proyectos/express_qa_v1/test-results/generated-prueba-de-fallo--c1224-o-de-la-historia-de-usuario-firefox/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/jordan/proyectos/express_qa_v1/pages/BasePage.ts",
+                        "column": 13,
+                        "line": 97
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "4aa74a0f2d5f0b366338-a18995eb1ae1f09acda4",
+              "file": "generated/prueba-de-fallo-nativo-sprint-3.spec.ts",
+              "line": 16,
+              "column": 9
+            },
+            {
+              "title": "Flujo completo de la historia de usuario",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "failed",
+                      "duration": 29902,
+                      "error": {
+                        "message": "Error: No se pudo encontrar el elemento: error Message. Probados 3 selectores.",
+                        "stack": "Error: No se pudo encontrar el elemento: error Message. Probados 3 selectores.\n    at MembeerLoginPage.findSmartly (/home/jordan/proyectos/express_qa_v1/pages/BasePage.ts:97:13)\n    at MembeerLoginPage.waitForErrorMessageVisible (/home/jordan/proyectos/express_qa_v1/pages/generated/MembeerLoginPage.ts:166:21)\n    at /home/jordan/proyectos/express_qa_v1/tests/generated/prueba-de-fallo-nativo-sprint-3.spec.ts:31:1",
+                        "location": {
+                          "file": "/home/jordan/proyectos/express_qa_v1/pages/BasePage.ts",
+                          "column": 13,
+                          "line": 97
+                        },
+                        "snippet": "\u001b[90m   at \u001b[39m../pages/BasePage.ts:97\n\n   95 |       // Guardar información detallada del fallo\n   96 |       await this.saveDebugInfo(description, attempts);\n>  97 |       throw new Error(\n      |             ^\n   98 |         `No se pudo encontrar el elemento: ${description}. Probados ${locators.length} selectores.`,\n   99 |       );\n  100 |     }"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/jordan/proyectos/express_qa_v1/pages/BasePage.ts",
+                            "column": 13,
+                            "line": 97
+                          },
+                          "message": "Error: No se pudo encontrar el elemento: error Message. Probados 3 selectores.\n\n   at ../pages/BasePage.ts:97\n\n   95 |       // Guardar información detallada del fallo\n   96 |       await this.saveDebugInfo(description, attempts);\n>  97 |       throw new Error(\n      |             ^\n   98 |         `No se pudo encontrar el elemento: ${description}. Probados ${locators.length} selectores.`,\n   99 |       );\n  100 |     }\n    at MembeerLoginPage.findSmartly (/home/jordan/proyectos/express_qa_v1/pages/BasePage.ts:97:13)\n    at MembeerLoginPage.waitForErrorMessageVisible (/home/jordan/proyectos/express_qa_v1/pages/generated/MembeerLoginPage.ts:166:21)\n    at /home/jordan/proyectos/express_qa_v1/tests/generated/prueba-de-fallo-nativo-sprint-3.spec.ts:31:1"
+                        }
+                      ],
+                      "stdout": [
+                        {
+                          "text": "email Input llenado con: \"usuario@prueba.com\"\n"
+                        },
+                        {
+                          "text": "password Input llenado con: \"password-incorrecto\"\n"
+                        },
+                        {
+                          "text": "Clic realizado en login Button\n"
+                        },
+                        {
+                          "text": "🔄 Ningún selector inmediato funcionó para error Message. Esperando...\n"
+                        },
+                        {
+                          "text": "💾 Debug info guardada en: test-results/debug/error Message-2025-07-27T06-33-38-867Z.json\n"
+                        },
+                        {
+                          "text": "[DEBUG] Captura de pantalla de fallo guardada en: /home/jordan/proyectos/express_qa_v1/test-results/failures/flujo_completo_de_la_historia_de_usuario_2025-07-27T06-33-38.873Z_screenshot.png\n"
+                        }
+                      ],
+                      "stderr": [
+                        {
+                          "text": ":x: Fallo detectado en el flujo de prueba: Error: No se pudo encontrar el elemento: error Message. Probados 3 selectores.\n    at MembeerLoginPage.findSmartly \u001b[90m(/home/jordan/proyectos/express_qa_v1/\u001b[39mpages/BasePage.ts:97:13\u001b[90m)\u001b[39m\n    at MembeerLoginPage.waitForErrorMessageVisible \u001b[90m(/home/jordan/proyectos/express_qa_v1/\u001b[39mpages/generated/MembeerLoginPage.ts:166:21\u001b[90m)\u001b[39m\n    at \u001b[90m/home/jordan/proyectos/express_qa_v1/\u001b[39mtests/generated/prueba-de-fallo-nativo-sprint-3.spec.ts:31:1\n    at \u001b[90m/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/worker/workerMain.js:304:9\n    at \u001b[90m/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/worker/testInfo.js:289:11\n    at TimeoutManager.withRunnable \u001b[90m(/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/worker/timeoutManager.js:67:14\u001b[90m)\u001b[39m\n    at TestInfoImpl._runWithTimeout \u001b[90m(/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/worker/testInfo.js:287:7\u001b[90m)\u001b[39m\n    at \u001b[90m/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/worker/workerMain.js:302:7\n    at WorkerMain._runTest \u001b[90m(/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/worker/workerMain.js:277:5\u001b[90m)\u001b[39m\n    at WorkerMain.runTestGroup \u001b[90m(/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/worker/workerMain.js:193:11\u001b[90m)\u001b[39m\n    at process.<anonymous> \u001b[90m(/home/jordan/proyectos/express_qa_v1/\u001b[39mnode_modules/\u001b[4mplaywright\u001b[24m/lib/common/process.js:65:22\u001b[90m)\u001b[39m\n"
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2025-07-27T06:33:09.390Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/home/jordan/proyectos/express_qa_v1/test-results/generated-prueba-de-fallo--c1224-o-de-la-historia-de-usuario-webkit/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/jordan/proyectos/express_qa_v1/pages/BasePage.ts",
+                        "column": 13,
+                        "line": 97
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "4aa74a0f2d5f0b366338-97b791687b306a9d1131",
+              "file": "generated/prueba-de-fallo-nativo-sprint-3.spec.ts",
+              "line": 16,
+              "column": 9
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2025-07-27T06:33:08.797Z",
+    "duration": 31027.196,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 3,
+    "flaky": 0
+  }
+}

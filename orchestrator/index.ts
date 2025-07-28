@@ -1,9 +1,9 @@
-// orchestrator/index.ts
+// orchestrator/index.ts - ASEGURAR que estos imports estén al inicio:
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 import * as fs from 'fs';
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';  // ← AÑADIR spawn aquí
 import { chromium, Page, Browser } from '@playwright/test';
 import { getLlmService } from './llm-service';
 import { ILlmService } from './llms/ILlmService';
@@ -11,8 +11,10 @@ import { LearningSystem } from './learning-system';
 import { FailureAnalyzer, FailureAnalysis } from './failure-analyzer';
 import { UIPatternDetector, DetectedPattern } from './ui-pattern-detector';
 import playwrightConfig from '../playwright.config';
-import { AIResponse } from './types/types'; // <-- 1. IMPORTAMOS EL NUEVO TIPO UNIFICADO
+import { AIResponse } from './types/types';
 import { MemoryService } from './services/MemoryService';
+import { ContextService, RealTimeContext } from './services/ContextService';
+
 
 interface TestCase {
   name: string;
@@ -20,21 +22,70 @@ interface TestCase {
   userStory: string[];
 }
 
-/**
- * Construye el prompt completo que se enviará al LLM.
- * Esta función ahora centraliza la lógica de creación del prompt.
- * @param patternsContext El contexto de patrones de UI detectados.
- * @param userStoryAsString La historia de usuario como string.
- * @returns El prompt completo listo para ser enviado a la IA.
- */
-function buildLLMPrompt(patternsContext: DetectedPattern[], userStoryAsString: string): string {
-  const patternsString = patternsContext.length > 0
-    ? `Adicionalmente, un análisis estructural de la página ha detectado los siguientes patrones de UI: ${JSON.stringify(patternsContext, null, 2)}. Usa este contexto para generar selectores y pasos más precisos y relevantes.`
-    : '';
+
+
+function buildLLMPrompt(patternsContext: DetectedPattern[], userStoryAsString: string, mcpContext?: RealTimeContext | null): string {
+  const patternsString =
+    patternsContext.length > 0
+      ? `Adicionalmente, un análisis estructural de la página ha detectado los siguientes patrones de UI: ${JSON.stringify(
+          patternsContext,
+          null,
+          2,
+        )}. Usa este contexto para generar selectores y pasos más precisos y relevantes.`
+      : '';
+
+  // ========== NUEVO: CONTEXTO MCP ESTRUCTURADO ==========
+
+  // INSTRUCCIÓN ESPECÍFICA PARA EVITAR CONTENEDORES
+if (mcpContext && mcpContext.interactiveElements.length > 0) {
+  console.log('🎯 ELEMENTOS MCP PARA IA:');
+  mcpContext.interactiveElements.forEach(el => {
+    console.log(`  ${el.role}: "${el.name}"`);
+  });
+}
+
+  const mcpContextString = mcpContext ? `
+**ANÁLISIS MCP EN TIEMPO REAL (DATOS ESTRUCTURADOS PRIORITARIOS):**
+
+**🎯 ELEMENTOS INTERACTIVOS DETECTADOS (${mcpContext.interactiveElements.length}):**
+${JSON.stringify(mcpContext.interactiveElements, null, 2)}
+
+**🏗️ ÁRBOL DE ACCESIBILIDAD ESTRUCTURADO:**
+${JSON.stringify(mcpContext.accessibilityTree, null, 2).substring(0, 2000)}...
+
+**📱 INFORMACIÓN DE PÁGINA ACTUAL:**
+- URL: ${mcpContext.pageInfo.url}
+- Título: ${mcpContext.pageInfo.title}
+- Timestamp: ${mcpContext.pageInfo.timestamp}
+
+**🖥️ CONTEXTO DE NAVEGADOR:**
+- Viewport: ${JSON.stringify(mcpContext.playwrightContext.viewportSize)}
+- User Agent: ${mcpContext.playwrightContext.userAgent}
+
+**⚡ SCREENSHOT MCP DISPONIBLE:** ${mcpContext.screenshot ? 'SÍ (Buffer MCP complementario)' : 'NO'}
+
+**🚀 INSTRUCCIONES ESPECIALES PARA USAR DATOS MCP:**
+1. **PRIORIDAD ABSOLUTA:** Los elementos listados en "Elementos Interactivos Detectados" son la fuente de verdad
+2. **ROLES ARIA EXACTOS:** Usa los roles proporcionados (button, textbox, link, etc.) en getByRole
+3. **NOMBRES PRECISOS:** Si un elemento tiene 'name', úsalo en getByRole con options: { name: "texto_exacto" }
+4. **ELEMENTOS SIN NOMBRE:** Los elementos sin 'name' pueden usar getByRole solo con el rol
+5. **VALIDACIÓN CRUZADA:** Combina la información MCP con la imagen para confirmar ubicaciones y apariencia
+6. **SELECTORES RESILIENTES:** Genera múltiples selectores basados en los datos MCP + análisis visual
+7. **DISABLED/CHECKED:** Considera los estados 'disabled' y 'checked' reportados por MCP
+
+**EJEMPLO DE USO MCP:**
+- MCP detecta: {"role": "button", "name": "Log In", "disabled": false}
+- GENERAR: {"type": "getByRole", "value": "button", "options": {"name": "Log In"}}
+- MCP detecta: {"role": "textbox", "name": "Email address"}
+- GENERAR: {"type": "getByRole", "value": "textbox", "options": {"name": "Email address"}}
+
+` : '**ANÁLISIS MCP:** No disponible - usando solo análisis visual y patrones detectados.\n';
 
   return `
     CONTEXTO ESTRUCTURAL DE LA PÁGINA:
     ${patternsString}
+
+    ${mcpContextString}
 
     CONTEXTO:
     Eres "Visionary QA", un motor de generación de código para pruebas automatizadas con Playwright y TypeScript. Tu única función es analizar los datos de entrada y devolver un objeto JSON estructurado que será usado para generar código de pruebas robusto y mantenible.
@@ -43,7 +94,25 @@ function buildLLMPrompt(patternsContext: DetectedPattern[], userStoryAsString: s
     "${userStoryAsString}"
 
     TAREA:
-   Analiza la IMAGEN ADJUNTA y la HISTORIA DE USUARIO. Basado en ellas, genera un único objeto JSON que tenga exactamente las siguientes dos propiedades de nivel superior: "pageObject" y "testSteps".
+   Analiza la IMAGEN ADJUNTA, la HISTORIA DE USUARIO y el ANÁLISIS MCP (si está disponible). Basado en ellos, genera un único objeto JSON que tenga exactamente las siguientes dos propiedades de nivel superior: "pageObject" y "testSteps".
+
+    REGLA DE ORO PARA MANEJO DE MÚLTIPLES IDIOMAS:
+    Es posible que la historia de usuario esté en un idioma (ej. español) y la interfaz en la imagen esté en otro (ej. inglés). TU TAREA ES MANEJAR ESTA SITUACIÓN DE FORMA INTELIGENTE.
+    1.  IDENTIFICA la intención funcional de la historia de usuario (ej. "hacer clic en Siguiente" significa avanzar).
+    2.  BUSCA en la imagen el elemento que CUMPLE ESA FUNCIÓN, incluso si el texto está en otro idioma (ej. un botón con el texto "Next").
+    3.  GENERA los selectores basándote en el elemento que encontraste visualmente en la imagen. La historia de usuario te da la intención, la imagen te da la implementación real.
+
+    **REGLA CRÍTICA PARA ELEMENTOS DE BÚSQUEDA:**
+- Si hay un elemento 'combobox' con nombre 'Buscar', usarlo en lugar de 'search'
+- Los elementos 'search' son generalmente contenedores, no inputs
+- Priorizar elementos 'textbox', 'combobox' sobre 'search' para acciones de fill
+
+    EJEMPLO DE RAZONAMIENTO:
+    - HU dice: "hago clic en el botón 'Siguiente'".
+    - La imagen muestra un botón con el texto "Next".
+    - TU CONCLUSIÓN: El usuario quiere hacer clic en el botón "Next".
+    - TU ACCIÓN: Genera los selectores para el botón "Next" (ej. getByRole('button', { name: 'Next' })).
+
 
    1. **pageObject**: Un objeto que DEBE contener:
       * **className**: String con el nombre de la clase Page Object (ej. "LoginPage", "CheckoutPage").
@@ -68,6 +137,27 @@ function buildLLMPrompt(patternsContext: DetectedPattern[], userStoryAsString: s
       * Incluir "params" como array (vacío si no hay parámetros)
       * Incluir "waitFor" cuando el elemento pueda no estar disponible inmediatamente
       * Incluir "assert" para validaciones importantes
+
+   REGLA DE ORO PARA LA NAVEGACIÓN:
+    La primera línea de la historia de usuario, que generalmente empieza con "DADO", SIEMPRE debe ser el PRIMER paso en el array "testSteps". Este primer paso DEBE tener la acción "navigate".
+
+    EJEMPLO CORRECTO DEL PRIMER PASO:
+    {
+      "page": "SmartCommsLoginPage", // La página inicial
+      "action": "navigate",
+      "params": ["/login"] // El path definido en el testcase.json
+    }
+
+   REGLA DE ORO DE ESPECIFICIDAD TÉCNICA:
+    Si la historia de usuario menciona explícitamente un tipo de elemento HTML (como "input", "div", "span") o un atributo específico (como "id='idSIButton9'"), ESA INSTRUCCIÓN TIENE PRIORIDAD ABSOLUTA.
+    - Debes usar ese tipo de elemento en el campo "elementType".
+    - Debes generar selectores que correspondan a ese elemento (ej. "css": "input[type='submit']").
+    - IGNORA la función semántica si se proporciona un detalle técnico. Si dice "hago clic en el input", el elementType DEBE ser "input", no "button".
+
+    EJEMPLO:
+    - HU: "hago clic en el input con id='idSIButton9' y value='Siguiente'"
+    - CORRECTO: "elementType": "input", "selectors": [{"type": "css", "value": "input#idSIButton9[value='Siguiente']"}]
+    - INCORRECTO: "elementType": "button"
 
    REGLA DE ORO PARA NOMBRES DE CLASES:
    - El nombre de la clase Page Object DEBE ser específico al contexto de la prueba.
@@ -383,14 +473,12 @@ EJEMPLO CON MÚLTIPLES OPCIONES:
 
 async function getOrGenerateAssets(
   testCase: TestCase,
-  fullDefinitionPath: string, // <-- LÍNEA MODIFICADA: Ahora recibe la ruta final
+  fullDefinitionPath: string,
   llmService: ILlmService,
-): Promise<AIResponse> { // <-- LÍNEA MODIFICADA: El retorno ya no es opcional
-  // USA LA RUTA RECIBIDA, YA NO LA CALCULA AQUÍ
+  contextService: ContextService // ✅ PARÁMETRO AÑADIDO
+): Promise<AIResponse> {
   if (fs.existsSync(fullDefinitionPath)) {
-    console.log(
-      `[LOG] ℹ️ Usando archivo de assets existente: ${path.basename(fullDefinitionPath)}`,
-    );
+    console.log(`[LOG] ℹ️ Usando archivo de assets existente: ${path.basename(fullDefinitionPath)}`);
     return JSON.parse(fs.readFileSync(fullDefinitionPath, 'utf8')) as AIResponse;
   }
 
@@ -401,42 +489,70 @@ async function getOrGenerateAssets(
   if (!baseURL) throw new Error('baseURL no está definida en playwright.config.ts');
   const fullUrl = new URL(testCase.path, baseURL).toString();
 
+  // ========== NUEVO: ANÁLISIS MCP PREVENTIVO ==========
+  console.log('[LOG] 🤖 Iniciando análisis MCP preventivo...');
+  let mcpContext: RealTimeContext | null = null;
+
+  try {
+    // CLAVE: MCP analiza la página ANTES de generar el código
+    mcpContext = await contextService.getRealTimeContext(fullUrl);
+    console.log(`[LOG] ✅ MCP análisis completado: ${mcpContext?.interactiveElements.length || 0} elementos detectados`);
+  } catch (error) {
+    console.warn('[LOG] ⚠️ MCP análisis falló, continuando con método tradicional:', error);
+  }
+
+  // Captura de pantalla tradicional (mantener como respaldo)
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext({
     viewport: { width: 1920, height: 1080 },
-    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    userAgent:
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
   });
   const page = await context.newPage();
 
+  (global as any).page = page;
+
+
+
+  // Simula acciones humanas mínimas
   await page.mouse.move(100, 100);
   await page.waitForTimeout(800);
-
   await page.setViewportSize({ width: 1920, height: 1080 });
-  console.log(`[LOG] 📸 Navegando a ${fullUrl} para tomar captura y analizar patrones...`);
+
+  console.log(`[LOG] 📸 Navegando a ${fullUrl} para captura tradicional...`);
   await page.goto(fullUrl, { waitUntil: 'networkidle' });
 
   const patternDetector = new UIPatternDetector();
   const detectedPatterns = await patternDetector.detectPatterns(page);
   console.log(
-    `[LOG] ✅ Patrones de UI detectados: ${detectedPatterns.map((p) => p.type).join(', ') || 'Ninguno'}`,
+    `[LOG] ✅ Patrones de UI detectados: ${
+      detectedPatterns.map((p) => p.type).join(', ') || 'Ninguno'
+    }`,
   );
 
   const screenshotBuffer = await page.screenshot({ fullPage: true });
   await browser.close();
   console.log('[LOG] ✅ Captura de pantalla tomada.');
 
-  console.log('[LOG] 🤖 Construyendo prompt y enviando a la IA...');
-  const userStoryAsString = Array.isArray(testCase.userStory) ? testCase.userStory.join('\n') : testCase.userStory;
-  // Se asume que tienes una función buildLLMPrompt
-  const prompt = buildLLMPrompt(detectedPatterns, userStoryAsString);
+  // ========== USAR LA FUNCIÓN buildLLMPrompt EXISTENTE ==========
+  console.log('[LOG] 🤖 Construyendo prompt híper-enriquecido...');
+  const userStoryAsString = Array.isArray(testCase.userStory)
+    ? testCase.userStory.join('\n')
+    : testCase.userStory;
+
+  // ✅ USAR LA FUNCIÓN EXISTENTE CON EL PARÁMETRO MCP
+  const enhancedPrompt = buildLLMPrompt(
+    detectedPatterns,
+    userStoryAsString,
+    mcpContext // ✅ PASAR CONTEXTO MCP
+  );
 
   const testAssets = await llmService.getTestAssetsFromIA(
-    prompt,
+    enhancedPrompt,
     screenshotBuffer.toString('base64'),
   );
   if (!testAssets) throw new Error('La IA no pudo generar los assets de prueba');
 
-  // LÍNEA AÑADIDA: Guarda el archivo solo cuando se genera
   fs.writeFileSync(fullDefinitionPath, JSON.stringify(testAssets, null, 2));
   console.log(`✨ Assets de IA guardados en: ${fullDefinitionPath}`);
 
@@ -444,24 +560,53 @@ async function getOrGenerateAssets(
 }
 
 async function main() {
-  console.log('🚀 Iniciando orquestador v11.0 (Logging en Tiempo Real)...');
+  console.log('🚀 Iniciando orquestador v12.0 (MCP Híper-Inteligente)...');
 
   const learningSystem = new LearningSystem();
-  const failureAnalyzer = new FailureAnalyzer();
   const llmService = getLlmService();
-  const memoryService = new MemoryService();
+  const contextService = new ContextService();
+
+  // NUEVO: Manejo de señales para limpieza garantizada
+  process.on('SIGINT', async () => {
+    console.log('\n🛑 Interrupción detectada, limpiando recursos...');
+    try {
+      await contextService.stopMCP();
+    } catch (e) {
+      console.warn('Error limpiando MCP:', e);
+    }
+    process.exit(0);
+  });
+
+  process.on('SIGTERM', async () => {
+    console.log('\n🛑 Terminación detectada, limpiando recursos...');
+    try {
+      await contextService.stopMCP();
+    } catch (e) {
+      console.warn('Error limpiando MCP:', e);
+    }
+    process.exit(0);
+  });
+
+  // NUEVO: Iniciar servidor MCP
+  try {
+    await contextService.startMCP();
+    console.log('✅ Servidor MCP iniciado correctamente');
+  } catch (error) {
+    console.warn('⚠️ No se pudo iniciar MCP, continuando sin contexto en tiempo real:', error);
+  }
+
   const testCasePath = process.argv[2];
   if (!testCasePath) {
     console.error('Error: La ruta al archivo .testcase.json es obligatoria.');
     process.exit(1);
   }
+
   const testCase: TestCase = JSON.parse(fs.readFileSync(testCasePath, 'utf-8'));
   console.log(`📋 Caso de prueba leído: "${testCase.name}"`);
 
-  // --- LÓGICA DE RUTAS CENTRALIZADA Y CORREGIDA ---
   const storiesDir = path.dirname(testCasePath);
   const testCaseName = path.basename(testCasePath, '.testcase.json');
-  const assetsDir = path.join(storiesDir, '../generated-assets'); // Apunta a la carpeta correcta
+  const assetsDir = path.join(storiesDir, '../generated-assets');
   if (!fs.existsSync(assetsDir)) {
     fs.mkdirSync(assetsDir, { recursive: true });
   }
@@ -472,69 +617,211 @@ async function main() {
   const maxRetries = 1;
   let lastAnalysis: FailureAnalysis | null = null;
 
-  while (attempt <= maxRetries) {
-    if (attempt > 0)
-      console.log(
-        `\n🔄 Reintentando prueba después de auto-reparación (Intento ${attempt + 1})...`,
-      );
+  try {
+    while (attempt <= maxRetries) {
+      if (attempt > 0) {
+        console.log(`\n🔄 Reintentando prueba después de auto-reparación (Intento ${attempt + 1})...`);
+      }
 
-    // --- LLAMADA MODIFICADA ---
-    // Ahora le pasamos la ruta correcta que calculamos aquí.
-    const testAssets = await getOrGenerateAssets(testCase, fullDefinitionPath, llmService);
+      // MODIFICADO: Pasar contextService a getOrGenerateAssets
+      const testAssets = await getOrGenerateAssets(testCase, fullDefinitionPath, llmService, contextService);
+      const enhancedAssets = learningSystem.enhanceAIAssets(testAssets, fullUrl);
+      const testFileName = testCase.name.replace(/\s+/g, '-').toLowerCase();
+      const testFilePath = `tests/generated/${testFileName}.spec.ts`;
 
-    // LA LÍNEA `fs.writeFileSync` SE ELIMINA DE AQUÍ PORQUE YA SE GUARDA DENTRO DE `getOrGenerateAssets`
-    let enhancedAssets = learningSystem.enhanceAIAssets(testAssets, fullUrl);
+      execSync(`npm run generate:pom -- ${fullDefinitionPath}`, { stdio: 'inherit' });
+      execSync(`npm run generate:spec -- ${fullDefinitionPath} ${testCasePath}`, { stdio: 'inherit' });
 
-    const testFileName = testCase.name.replace(/\s+/g, '-').toLowerCase();
-    const testFilePath = `tests/generated/${testFileName}.spec.ts`;
-
-    execSync(`npm run generate:pom -- ${fullDefinitionPath}`, { stdio: 'inherit' });
-    execSync(`npm run generate:spec -- ${fullDefinitionPath} ${testCasePath}`, {
-      stdio: 'inherit',
-    });
-
-    try {
-      console.log('\n🧪 Ejecutando prueba generada...');
-      execSync(`npx playwright test ${testFilePath}`, { stdio: 'inherit' });
-
-      console.log('\n✅ ¡ÉXITO! La prueba se ha ejecutado correctamente.');
-      await learningSystem.learnFromSuccess(testCase.name, enhancedAssets, fullUrl, lastAnalysis || undefined);
-      break;
-    } catch (error) {
-      console.error('\n❌ La prueba falló. Iniciando análisis inteligente...');
-
-      let detailedReport = "";
+      // NUEVO: Control total del proceso Playwright
       try {
-        execSync(`npx playwright test "${testFilePath}" --reporter=json`, { stdio: 'pipe', encoding: 'utf8' });
-      } catch (reportError: any) {
-        detailedReport = reportError.stdout?.toString() || String(reportError);
-      }
+        console.log('\n🧪 Ejecutando prueba generada...');
 
-      const analysis = await failureAnalyzer.analyzeFailure(testFilePath, detailedReport, fullDefinitionPath, fullUrl);
-      lastAnalysis = analysis;
+        // Ejecutar Playwright en un proceso hijo controlado
+        const playwrightProcess = spawn('npx', ['playwright', 'test', testFilePath, '--reporter=list'], {
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
 
-      const similarSolutions = await memoryService.searchSimilarFailures(analysis.errorMessage);
-      if (similarSolutions.length > 0) {
-        console.log('✅ ¡Recuerdos encontrados!', similarSolutions);
-      } else {
-        console.log('🤔 No se encontraron recuerdos similares.');
-      }
+        let stdoutData = '';
+        let stderrData = '';
 
-      await learningSystem.learnFromFailure(enhancedAssets, fullUrl);
+        playwrightProcess.stdout.on('data', (data: Buffer) => {
+          const output = data.toString();
+          process.stdout.write(output); // Mostrar en tiempo real
+          stdoutData += output;
+        });
 
-      if (attempt < maxRetries) {
-        const fixed = await failureAnalyzer.applyFixes(analysis, fullDefinitionPath);
-        if (fixed) {
-          attempt++;
-          continue;
+        playwrightProcess.stderr.on('data', (data: Buffer) => {
+          const output = data.toString();
+          process.stderr.write(output); // Mostrar en tiempo real
+          stderrData += output;
+        });
+
+        // Esperar a que termine el proceso
+        const exitCode = await new Promise<number>((resolve) => {
+
+          playwrightProcess.on('close', (code) => {
+            console.log(`\n📊 Playwright terminó con código: ${code}`);
+            resolve(code || 0);
+          });
+        });
+
+
+        // IMPORTANTE: SIEMPRE proceder al análisis, sin importar el resultado
+        if (exitCode === 0) {
+          console.log('🎉 ¡Todas las pruebas pasaron exitosamente!');
+          break; // Salir del bucle de reintentos - éxito total
+        } else {
+          console.error('\n🔍 Detectados fallos en las pruebas, procediendo al análisis...');
+          throw new Error(`Pruebas fallaron con exit code: ${exitCode}`);
         }
-      }
 
-      console.log('⚠️ La auto-reparación no fue posible o ya se intentó. El fallo persiste.');
-      process.exit(1);
+      } catch (playwrightError) {
+        console.error('🔍 Iniciando análisis HÍPER-INTELIGENTE con contexto MCP...');
+
+        const failureAnalyzer = new FailureAnalyzer();
+        const memoryService = new MemoryService();
+
+        const errorMessage = playwrightError instanceof Error ? playwrightError.message : String(playwrightError);
+
+       // NUEVO: ANÁLISIS DE FALLOS CON NAVEGACIÓN FRESCA MCP
+       let realTimeContext: RealTimeContext | null = null;
+       try {
+         console.log('🔍 [ANÁLISIS] Obteniendo contexto híper-rico con navegación fresca...');
+
+         // CLAVE: Navegación completamente fresca para el análisis
+         // Usar URL directa para que MCP haga su propia navegación independiente
+         realTimeContext = await contextService.getRealTimeContext(fullUrl);
+
+         if (realTimeContext && realTimeContext.interactiveElements.length > 0) {
+           console.log(`✅ [ANÁLISIS] Contexto híper-rico obtenido: ${realTimeContext.interactiveElements.length} elementos interactivos`);
+           console.log(`📊 [ANÁLISIS] Datos MCP: ${realTimeContext.mcpConsoleMessages.length} mensajes consola, ${realTimeContext.mcpNetworkRequests.length} peticiones red`);
+
+           if (realTimeContext.screenshot) {
+             console.log('📸 [ANÁLISIS] Screenshot MCP disponible para análisis visual');
+           }
+         } else {
+           console.warn('⚠️ [ANÁLISIS] Contexto MCP limitado, usando datos disponibles');
+         }
+
+       } catch (contextError) {
+         console.warn('⚠️ [ANÁLISIS] Error obteniendo contexto MCP fresco:', contextError);
+
+         // FALLBACK: Crear contexto mínimo funcional
+         realTimeContext = {
+           domSnapshot: 'Error obteniendo contexto MCP',
+           accessibilityTree: {},
+           interactiveElements: [],
+           eventLog: [],
+           consoleErrors: [],
+           networkErrors: [],
+           mcpConsoleMessages: [],
+           mcpNetworkRequests: [],
+           pageInfo: {
+             url: fullUrl,
+             title: 'error-context',
+             timestamp: new Date().toISOString(),
+           },
+           playwrightContext: {
+             viewportSize: { width: 1920, height: 1080 },
+             userAgent: 'fallback-context',
+           },
+         };
+       }
+
+        const similarMemories = await memoryService.searchSimilarFailures(errorMessage);
+
+        // Obtener reporte detallado (mantener lógica existente)
+        let detailedReport = errorMessage;
+        try {
+          const reportResult = spawn('npx', ['playwright', 'test', testFilePath, '--reporter=json'], {
+            stdio: 'pipe',
+          });
+
+          let reportData = '';
+          reportResult.stdout.on('data', (data: Buffer) => {
+            reportData += data.toString();
+          });
+
+          await new Promise<void>((resolve) => {
+            reportResult.on('close', () => {
+              detailedReport = reportData || errorMessage;
+              resolve();
+            });
+          });
+        } catch (reportError: any) {
+          console.warn('⚠️ No se pudo obtener reporte JSON, usando error básico');
+        }
+
+        // ANÁLISIS CON CONTEXTO HÍPER-RICO
+        const analysis = await failureAnalyzer.analyzeFailure(
+          testFilePath,
+          detailedReport,
+          fullDefinitionPath,
+          fullUrl,
+          realTimeContext, // NUEVO: contexto híper-rico con MCP
+          similarMemories,
+        );
+        lastAnalysis = analysis;
+
+        if (similarMemories.length > 0) {
+          console.log('✅ ¡Recuerdos encontrados!', similarMemories.length, 'experiencias pasadas');
+        } else {
+          console.log('🤔 No se encontraron recuerdos similares.');
+        }
+
+        await learningSystem.learnFromFailure(enhancedAssets, fullUrl);
+
+        if (attempt < maxRetries) {
+          console.log('🔧 Intentando auto-reparación inteligente...');
+          const fixed = await failureAnalyzer.applyFixes(analysis, fullDefinitionPath);
+          if (fixed) {
+            console.log('✅ Auto-reparación aplicada, reintentando prueba...');
+            attempt++;
+            continue;
+          } else {
+            // NUEVO: Si applyFixes retornó false, aprender del fallo
+            console.log('🔴 Reparación automática falló, aprendiendo del fallo...');
+            await learningSystem.learnFromFailedRepair(analysis);
+          }
+        }
+
+        // NUEVO: También aprender si se agotaron todos los reintentos
+        console.log('⚠️ La auto-reparación no fue posible o ya se intentó. El fallo persiste.');
+        console.log('🔴 Registrando fallo definitivo en el sistema de aprendizaje híper-inteligente...');
+        await learningSystem.learnFromFailedRepair(analysis);
+
+        // NUEVO: Mostrar resumen del análisis híper-rico
+        if (realTimeContext && realTimeContext.interactiveElements.length > 0) {
+          console.log('\n📊 RESUMEN DEL ANÁLISIS HÍPER-INTELIGENTE:');
+          console.log(`   🎯 Elementos interactivos detectados: ${realTimeContext.interactiveElements.length}`);
+          console.log(`   🏗️ Árbol de accesibilidad: ${Object.keys(realTimeContext.accessibilityTree).length > 0 ? 'Disponible' : 'Vacío'}`);
+          console.log(`   📱 Información de página: ${realTimeContext.pageInfo.title} (${realTimeContext.pageInfo.url})`);
+          console.log(`   🔍 Contexto MCP: ${realTimeContext.mcpConsoleMessages.length} logs, ${realTimeContext.mcpNetworkRequests.length} requests`);
+
+          if (analysis.aiDiagnosis) {
+            console.log(`   🧠 Diagnóstico IA: ${analysis.aiDiagnosis.rootCause}`);
+            console.log(`   💡 Sugerencia: ${analysis.aiDiagnosis.repairSuggestion}`);
+          }
+        }
+
+        console.log('⚠️ Análisis híper-inteligente completado. El programa terminará normalmente.');
+        return; // En lugar de process.exit(1)
+      }
+    }
+  } finally {
+    // MODIFICADO: Delay antes de cerrar MCP para que termine el análisis
+    try {
+      console.log('⏳ Esperando que termine el análisis MCP...');
+      await new Promise(resolve => setTimeout(resolve, 3000)); // Aumentado a 3 segundos
+      await contextService.stopMCP();
+      console.log('🧹 Servidor MCP detenido correctamente');
+    } catch (error) {
+      console.warn('⚠️ Error deteniendo MCP:', error);
     }
   }
-}
 
+  // NUEVO: Solo llegar aquí si todo fue exitoso
+  console.log('🎉 ¡Orquestador completado exitosamente!');
+}
 
 main().catch(console.error);

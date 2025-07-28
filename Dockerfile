@@ -18,4 +18,5 @@ RUN mkdir -p /app/test-results /app/playwright-report /app/snapshots \
     && chmod -R 777 /app/test-results /app/playwright-report /app/snapshots
 
 # 7. Comando por defecto: ejecuta los tests (se puede sobreescribir desde Docker Compose)
-CMD ["npx", "playwright", "test"]
+# 7. Inicia el servidor MCP en segundo plano (&) y LUEGO ejecuta las pruebas.
+CMD npx playwright-mcp & npx playwright test
