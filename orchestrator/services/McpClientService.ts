@@ -7,6 +7,7 @@ export interface MCPContext {
   domSnapshot: string;
   accessibilityTree: any;
   interactiveElements: any[];
+  domElements?: any[]; // NUEVO: Elementos del DOM con atributos HTML
   consoleMessages: any[];
   networkRequests: any[];
   screenshot?: Buffer;
@@ -266,7 +267,7 @@ export class MCPClientService {
       }
 
       // Si no se encuentra JSON válido, intentar extraer datos estructurados
-      console.warn('[MCP] ⚠️ No se pudo extraer JSON válido, intentando parsing alternativo');
+      // Nota: Esto es normal para MCP - muchas respuestas vienen en formato YAML/texto
       return this.parseAlternativeFormat(rawText, fallback);
 
     } catch (error) {
@@ -327,14 +328,32 @@ export class MCPClientService {
           const [, role, ref] = refMatch;
           const nameMatch = trimmed.match(/"([^"]+)"/);
 
+          // Extraer TODOS los atributos [key=value] como lo hace el proyecto test
+          const attributes: Record<string, any> = {};
+          const attrMatches = trimmed.matchAll(/\[(\w+)=([^\]]+)\]/g);
+          for (const match of attrMatches) {
+            if (match[1] !== 'ref') {  // ref ya lo tenemos separado
+              attributes[match[1]] = match[2];
+            }
+          }
+          
+          // También buscar atributos booleanos [disabled], [checked], etc.
+          const booleanAttrs = ['disabled', 'checked', 'expanded', 'required', 'readonly'];
+          for (const attr of booleanAttrs) {
+            if (trimmed.includes(`[${attr}]`)) {
+              attributes[attr] = true;
+            }
+          }
+
           currentElement = {
             role: role,
             ref: ref,
             name: nameMatch ? nameMatch[1] : trimmed.replace(/\[.*?\]/g, '').trim(),
             element: role,
-            disabled: trimmed.includes('[disabled]'),
-            checked: trimmed.includes('[checked]'),
-            expanded: trimmed.includes('[expanded]')
+            disabled: attributes.disabled || false,
+            checked: attributes.checked || false,
+            expanded: attributes.expanded || false,
+            attributes: attributes  // ¡Esta es la clave!
           };
           elements.push(currentElement);
         }
@@ -465,9 +484,22 @@ export class MCPClientService {
         console.warn('[MCP] ⚠️ No se pudo obtener screenshot:', error);
       }
 
-      // Extraer elementos interactivos del snapshot
+      // NUEVO: Obtener información específica del DOM con atributos HTML
+      let domElements: any[] = [];
+      try {
+        console.log('[MCP] ELIMINADO: browser_evaluate problemático - solo usar YAML snapshot');
+        // domElements permanece vacío - toda la información viene del YAML snapshot
+        
+      } catch (error) {
+        console.warn('[MCP] ⚠️ No se pudo obtener información del DOM:', error);
+      }
+
+      // Extraer elementos interactivos del snapshot (método tradicional como fallback)
       const accessibilityTree = this.parseAccessibilityTree(snapshotResult);
-      const interactiveElements = this.extractInteractiveElements(accessibilityTree);
+      const fallbackElements = this.extractInteractiveElements(accessibilityTree);
+      
+      // Usar elementos del DOM si los tenemos, sino usar los del árbol de accesibilidad
+      const finalElements = domElements.length > 0 ? domElements : fallbackElements;
 
       // Obtener información de la página
       const pageInfo = await this.getPageInfo();
@@ -475,14 +507,15 @@ export class MCPClientService {
       const context: MCPContext = {
         domSnapshot: JSON.stringify(accessibilityTree, null, 2),
         accessibilityTree,
-        interactiveElements,
+        interactiveElements: finalElements, // Usar elementos finales (DOM o fallback)
+        domElements, // NUEVO: Agregar elementos del DOM
         consoleMessages: this.parseConsoleMessages(consoleResult),
         networkRequests: this.parseNetworkRequests(networkResult),
         screenshot,
         pageInfo
       };
 
-      console.log(`[MCP] ✅ Contexto obtenido: ${interactiveElements.length} elementos interactivos`);
+      console.log(`[MCP] ✅ Contexto obtenido: ${finalElements.length} elementos (${domElements.length > 0 ? 'del DOM' : 'del árbol de accesibilidad'})`);
       return context;
 
     } catch (error) {
@@ -598,6 +631,440 @@ export class MCPClientService {
       console.warn('[MCP] ⚠️ Error parseando peticiones de red:', error);
       return [];
     }
+  }
+
+  /**
+   * NUEVO: Obtiene HTML snapshot completo sin procesamiento (solución genérica)
+   */
+  async getHtmlSnapshot(): Promise<string> {
+    if (!this.mcpClient) {
+      throw new Error('Cliente MCP no inicializado');
+    }
+
+    try {
+      console.log('[MCP] Obteniendo HTML snapshot completo...');
+      
+      // Intentar usar browser_html_snapshot si está disponible
+      try {
+        const htmlResult = await this.mcpClient.callTool({
+          name: 'browser_html_snapshot',
+          arguments: {}
+        });
+        
+        if (htmlResult.content && Array.isArray(htmlResult.content)) {
+          const textContent = htmlResult.content.find((item: any) => item.type === 'text');
+          if (textContent?.text) {
+            console.log('[MCP] ✅ HTML snapshot obtenido con browser_html_snapshot');
+            return textContent.text;
+          }
+        }
+        
+      } catch (error) {
+        console.log('[MCP] ⚠️ browser_html_snapshot no disponible, usando browser_evaluate...');
+      }
+      
+      // Fallback: usar browser_evaluate para obtener HTML
+      const evalResult = await this.mcpClient.callTool({
+        name: 'browser_evaluate',
+        arguments: {
+          function: `() => document.documentElement.outerHTML`
+        }
+      });
+      
+      if (evalResult.content && Array.isArray(evalResult.content)) {
+        const textContent = evalResult.content.find((item: any) => item.type === 'text');
+        if (textContent?.text) {
+          console.log('[MCP] ✅ HTML snapshot obtenido con browser_evaluate fallback');
+          return textContent.text;
+        }
+      }
+      
+      return '';
+      
+    } catch (error) {
+      console.error('[MCP] ❌ Error obteniendo HTML snapshot:', error);
+      return '';
+    }
+  }
+
+  /**
+   * NUEVO: Obtiene contexto híbrido completo sin hardcodeo - correlación automática
+   */
+  async getCompleteContext(url?: string): Promise<MCPContext & { hybridElements?: any[], rawJavaScriptData?: any[] }> {
+    console.log('[MCP] Obteniendo contexto híbrido completo sin hardcodeo...');
+    
+    // Obtener contexto básico (ARIA snapshot con refs)
+    const basicContext = await this.getRealTimeContext(url);
+    
+    // Enriquecer elementos MCP con información de atributos que ya proporciona
+    const hybridElements = this.enrichMcpElements(basicContext.interactiveElements);
+    
+    console.log(`[MCP] ✅ Contexto híbrido obtenido - ${basicContext.interactiveElements.length} elementos MCP enriquecidos`);
+    
+    return {
+      ...basicContext,
+      hybridElements
+    };
+  }
+
+  /**
+   * NUEVO: Enriquece elementos MCP con atributos que ya proporciona (basado en StableMcpService)
+   */
+  private enrichMcpElements(mcpElements: any[]): any[] {
+    return mcpElements.map((element, index) => {
+      // Crear elemento híbrido con datos MCP + detección inteligente
+      const hybridElement = {
+        // Datos MCP originales
+        ref: element.ref,
+        role: element.role,
+        element: element.element,
+        name: element.name,
+        text: element.text,
+        disabled: element.disabled,
+        checked: element.checked,
+        expanded: element.expanded,
+        
+        // Atributos HTML que MCP ya proporciona (¡esta era la clave!)
+        htmlAttributes: {
+          type: element.attributes?.type || element.type || '',
+          name: element.attributes?.name || element.name || '',
+          id: element.attributes?.id || '',
+          className: element.attributes?.class || element.attributes?.className || '',
+          placeholder: element.attributes?.placeholder || '',
+          tagName: element.tagName || this.inferTagName(element),
+          ariaLabel: element.attributes?.['aria-label'] || '',
+          disabled: element.disabled || false,
+          required: element.attributes?.required || false,
+          readonly: element.attributes?.readonly || false
+        },
+        
+        // Generar selectores automáticamente usando la estrategia de StableMcpService
+        selectors: this.generatePlaywrightSelectors(element)
+      };
+      
+      return hybridElement;
+    });
+  }
+
+  /**
+   * Genera selectores de Playwright basado en StableMcpService
+   */
+  private generatePlaywrightSelectors(element: any): any[] {
+    const selectors: any[] = [];
+    
+    // Selector basado en role (prioridad alta)
+    if (element.role) {
+      if (element.name || element.text) {
+        selectors.push({
+          type: 'getByRole',
+          value: element.role,
+          options: { name: element.name || element.text }
+        });
+      } else {
+        selectors.push({
+          type: 'getByRole',
+          value: element.role
+        });
+      }
+    }
+    
+    // Selector por ID (muy específico)
+    if (element.attributes?.id) {
+      selectors.push({
+        type: 'css',
+        value: `#${element.attributes.id}`
+      });
+    }
+    
+    // Selector por type y tagName (específico para inputs)
+    const type = element.attributes?.type || element.type;
+    const tagName = element.tagName || this.inferTagName(element);
+    if (type && tagName) {
+      selectors.push({
+        type: 'css',
+        value: `${tagName}[type="${type}"]`
+      });
+    }
+    
+    // Selector por name
+    const name = element.attributes?.name || element.name;
+    if (name) {
+      selectors.push({
+        type: 'css',
+        value: `[name="${name}"]`
+      });
+    }
+    
+    // Selector por placeholder
+    const placeholder = element.attributes?.placeholder;
+    if (placeholder) {
+      selectors.push({
+        type: 'getByPlaceholder',
+        value: placeholder
+      });
+    }
+    
+    // Selector por texto
+    if (element.text) {
+      selectors.push({
+        type: 'getByText',
+        value: element.text
+      });
+    }
+    
+    return selectors;
+  }
+
+  /**
+   * Infiere el tagName basado en el role y tipo
+   */
+  private inferTagName(element: any): string {
+    const type = element.attributes?.type || element.type;
+    
+    if (element.role === 'textbox') {
+      return type === 'textarea' ? 'textarea' : 'input';
+    }
+    if (element.role === 'button') {
+      return 'button';
+    }
+    if (element.role === 'link') {
+      return 'a';
+    }
+    if (element.role === 'combobox') {
+      return 'select';
+    }
+    
+    return 'div'; // fallback
+  }
+
+  /**
+   * ELIMINADO: Método anterior de JavaScript que no funcionaba
+   */
+  private async getJavaScriptElementData(): Promise<any[]> {
+    if (!this.mcpClient) {
+      throw new Error('Cliente MCP no inicializado');
+    }
+
+    try {
+      console.log('[MCP] Solo usando browser_snapshot - NO browser_evaluate');
+      
+      // ESTRATEGIA SIMPLE: Solo obtener el snapshot genérico completo
+      // MCP ya extrae todos los elementos interactivos automáticamente
+      
+      const snapResult = await this.mcpClient.callTool({
+        name: 'browser_snapshot',
+        arguments: {} // Sin selector - obtiene TODO
+      });
+      
+      console.log('[MCP] ✅ browser_snapshot genérico completado');
+      console.log('[MCP] ℹ️ Los atributos vienen en el YAML del snapshot, no aquí');
+      
+      // Este método ahora retorna vacío porque los datos están en el YAML
+      // La correlación los procesará desde el YAML directamente
+      return [];
+      
+    } catch (error) {
+      console.warn('[MCP] ⚠️ Error con browser_snapshot genérico:', error);
+      return [];
+    }
+  }
+
+  /**
+   * NUEVO: Correlaciona elementos YAML con datos JavaScript SIN HARDCODEO
+   */
+  private correlateYamlWithJavaScript(yamlElements: any[], jsElements: any[]): any[] {
+    const hybridElements: any[] = [];
+    
+    console.log(`[MCP] 🔗 Correlacionando ${yamlElements.length} elementos YAML con ${jsElements.length} elementos JS...`);
+    
+    // Estrategia de correlación completamente genérica
+    yamlElements.forEach((yamlEl, yamlIndex) => {
+      // Crear elemento híbrido base con datos YAML
+      const hybridElement = {
+        // Datos YAML (esenciales para MCP)
+        ref: yamlEl.ref,
+        role: yamlEl.role,
+        element: yamlEl.element,
+        name: yamlEl.name,
+        disabled: yamlEl.disabled,
+        checked: yamlEl.checked,
+        expanded: yamlEl.expanded,
+        
+        // Campos para datos JavaScript (se llenarán si hay correlación)
+        htmlType: null,
+        htmlName: null,
+        htmlId: null,
+        placeholder: null,
+        className: null,
+        htmlAttributes: {},
+        boundingBox: null,
+        
+        // Selectores generados automáticamente
+        selectors: []
+      };
+      
+      // Intentar correlación automática SIN HARDCODEO
+      let correlatedJs = null;
+      
+      // Método 1: Correlación por posición aproximada (elementos en orden similar)
+      if (jsElements[yamlIndex]) {
+        correlatedJs = jsElements[yamlIndex];
+      }
+      
+      // Método 2: Correlación por texto exacto si está disponible
+      if (!correlatedJs && yamlEl.name) {
+        correlatedJs = jsElements.find(jsEl => 
+          jsEl.textContent === yamlEl.name || 
+          jsEl.innerText === yamlEl.name ||
+          jsEl.placeholder === yamlEl.name
+        );
+      }
+      
+      // Método 3: Correlación por tipo de elemento y contexto
+      if (!correlatedJs && yamlEl.role) {
+        const sameRoleElements = jsElements.filter(jsEl => {
+          if (yamlEl.role === 'textbox') return jsEl.tagName === 'input';
+          if (yamlEl.role === 'button') return jsEl.tagName === 'button';
+          if (yamlEl.role === 'link') return jsEl.tagName === 'a';
+          return false;
+        });
+        
+        // Si hay múltiples del mismo tipo, usar índice relativo
+        if (sameRoleElements.length > 0) {
+          const yamlSameRoleIndex = yamlElements
+            .filter(el => el.role === yamlEl.role)
+            .indexOf(yamlEl);
+          
+          if (sameRoleElements[yamlSameRoleIndex]) {
+            correlatedJs = sameRoleElements[yamlSameRoleIndex];
+          } else {
+            correlatedJs = sameRoleElements[0]; // Fallback al primero
+          }
+        }
+      }
+      
+      // Si encontramos correlación, enriquecer el elemento híbrido
+      if (correlatedJs) {
+        hybridElement.htmlType = correlatedJs.type;
+        hybridElement.htmlName = correlatedJs.name;
+        hybridElement.htmlId = correlatedJs.id;
+        hybridElement.placeholder = correlatedJs.placeholder;
+        hybridElement.className = correlatedJs.className;
+        hybridElement.htmlAttributes = {
+          type: correlatedJs.type,
+          name: correlatedJs.name,
+          id: correlatedJs.id,
+          className: correlatedJs.className,
+          placeholder: correlatedJs.placeholder,
+          tagName: correlatedJs.tagName,
+          ariaLabel: correlatedJs.ariaLabel,
+          disabled: correlatedJs.disabled,
+          required: correlatedJs.required,
+          readonly: correlatedJs.readonly
+        };
+        hybridElement.boundingBox = correlatedJs.boundingBox;
+        
+        // Generar selectores automáticamente basados en datos disponibles
+        hybridElement.selectors = this.generateSelectorsAutomatically(yamlEl, correlatedJs);
+      } else {
+        // Sin correlación, generar selectores solo con datos YAML
+        hybridElement.selectors = this.generateSelectorsFromYaml(yamlEl);
+      }
+      
+      hybridElements.push(hybridElement);
+    });
+    
+    console.log(`[MCP] ✅ Correlación completada: ${hybridElements.filter(el => el.htmlType).length}/${hybridElements.length} elementos enriquecidos`);
+    
+    return hybridElements;
+  }
+
+  /**
+   * NUEVO: Genera selectores automáticamente sin hardcodeo
+   */
+  private generateSelectorsAutomatically(yamlEl: any, jsEl?: any): any[] {
+    const selectors: any[] = [];
+    
+    // Selector basado en role YAML (siempre disponible)
+    if (yamlEl.role && yamlEl.name) {
+      selectors.push({
+        type: 'getByRole',
+        value: yamlEl.role,
+        options: { name: yamlEl.name }
+      });
+    } else if (yamlEl.role) {
+      selectors.push({
+        type: 'getByRole',
+        value: yamlEl.role
+      });
+    }
+    
+    // Si tenemos datos JavaScript, generar selectores más específicos
+    if (jsEl) {
+      // Selector por ID (más confiable)
+      if (jsEl.id) {
+        selectors.push({
+          type: 'css',
+          value: `#${jsEl.id}`
+        });
+      }
+      
+      // Selector por type y tag (muy específico)
+      if (jsEl.type && jsEl.tagName) {
+        selectors.push({
+          type: 'css',
+          value: `${jsEl.tagName}[type="${jsEl.type}"]`
+        });
+      }
+      
+      // Selector por name
+      if (jsEl.name) {
+        selectors.push({
+          type: 'css',
+          value: `[name="${jsEl.name}"]`
+        });
+      }
+      
+      // Selector por placeholder
+      if (jsEl.placeholder) {
+        selectors.push({
+          type: 'getByPlaceholder',
+          value: jsEl.placeholder
+        });
+      }
+      
+      // Selector por texto si está disponible
+      if (jsEl.textContent) {
+        selectors.push({
+          type: 'getByText',
+          value: jsEl.textContent
+        });
+      }
+    }
+    
+    return selectors;
+  }
+
+  /**
+   * NUEVO: Genera selectores solo con datos YAML
+   */
+  private generateSelectorsFromYaml(yamlEl: any): any[] {
+    const selectors: any[] = [];
+    
+    if (yamlEl.role && yamlEl.name) {
+      selectors.push({
+        type: 'getByRole',
+        value: yamlEl.role,
+        options: { name: yamlEl.name }
+      });
+    } else if (yamlEl.role) {
+      selectors.push({
+        type: 'getByRole',
+        value: yamlEl.role
+      });
+    }
+    
+    return selectors;
   }
 
   /**

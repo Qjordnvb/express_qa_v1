@@ -4,7 +4,7 @@ import {
   HarmCategory,
   HarmBlockThreshold,
 } from '@google/generative-ai';
-import { ILlmService, AIFailureAnalysis } from './ILlmService';
+import { ILlmService, AIFailureAnalysis, AINavigationDecision } from './ILlmService';
 import { AIResponse } from '../types/types';
 import { MCPClientService } from '../services/McpClientService';
 
@@ -108,6 +108,42 @@ export class GoogleGeminiService implements ILlmService {
     }
 
     return this.generateStructuredJson(enrichedPrompt);
+  }
+
+  /**
+   * NUEVO: Método específico para decisiones de navegación MCP
+   */
+  async getNavigationDecisionFromIA(prompt: string): Promise<AINavigationDecision | null> {
+    console.log('🧠 Pidiendo decisión de navegación a la IA...');
+    
+    const enhancedPrompt = `${prompt}
+
+IMPORTANTE: Devuelve ÚNICAMENTE un objeto JSON válido con la estructura exacta especificada.
+NO incluyas explicaciones, código markdown, ni texto adicional.`;
+
+    try {
+      const result = await this.model.generateContent([enhancedPrompt]);
+      const response = await result.response;
+      let jsonText = response.text().replace(/^```json/gm, '').replace(/```$/gm, '').trim();
+      
+      // Limpiar cualquier texto adicional antes o después del JSON
+      const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonText = jsonMatch[0];
+      }
+      
+      const decision = JSON.parse(jsonText) as AINavigationDecision;
+      
+      console.log(`✅ IA decidió: ${decision.action} ${decision.element?.name || ''}`);
+      return decision;
+      
+    } catch (error) {
+      console.error('❌ Error al obtener decisión de navegación:', error);
+      return {
+        action: 'observe',
+        reasoning: 'Error en procesamiento de IA, observando estado actual'
+      };
+    }
   }
 
   /**
