@@ -6,6 +6,6 @@
     "CUANDO lleno el campo de email con 'usuario@prueba.com'",
     "Y lleno el campo de contraseña con 'password-incorrecto'",
     "Y hago clic en el botón para iniciar sesión",
-    "ENTONCES debería ver un mensaje de error"
+    "ENTONCES debería ver un mensaje de error que dice 'Este es un texto de error que no existe'"
   ]
 }

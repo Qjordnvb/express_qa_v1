@@ -1,0 +1,9 @@
+{
+  "name": "Simple Google Search Test",
+  "path": "/",
+  "userStory": [
+    "GIVEN I am on the Google homepage",
+    "WHEN I locate the search input field",
+    "THEN I should be able to identify it successfully"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "SmartComms Login Test",
+  "path": "/login",
+  "userStory": [
+    "DADO que navego a la página de login de SmartComms",
+    "CUANDO hago clic en 'Ingresa por Ab-inbev'",
+    "Y ingreso mi email 'example@example.com'",
+    "Y hago clic en siguiente",
+    "Y ingreso mi password 'xxxxxxxxxxxxx***$'",
+    "Y hago clic en iniciar sesión",
+    "Y hago clic en sí",
+    "ENTONCES debería acceder al dashboard"
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "pageObject": {
+    "className": "MembeerLoginPage",
+    "locators": [
+      {
+        "name": "emailInput",
+        "elementType": "input",
+        "actions": [
+          "fill",
+          "clear"
+        ],
+        "selectors": [
+          {
+            "type": "getByRole",
+            "value": "textbox",
+            "options": {
+              "name": "Email"
+            }
+          }
+        ],
+        "waitBefore": "visible",
+        "validateAfter": true
+      },
+      {
+        "name": "passwordInput",
+        "elementType": "input",
+        "actions": [
+          "fill",
+          "clear"
+        ],
+        "selectors": [
+          {
+            "type": "getByRole",
+            "value": "textbox",
+            "options": {
+              "name": "- textbox"
+            }
+          }
+        ],
+        "waitBefore": "visible",
+        "validateAfter": true
+      },
+      {
+        "name": "continuarButton",
+        "elementType": "button",
+        "actions": [
+          "click"
+        ],
+        "selectors": [
+          {
+            "type": "getByRole",
+            "value": "button",
+            "options": {
+              "name": "Continuar"
+            }
+          }
+        ],
+        "waitBefore": "enabled",
+        "validateAfter": true
+      }
+    ]
+  },
+  "testSteps": [
+    {
+      "page": "MembeerLoginPage",
+      "action": "navigate",
+      "params": [
+        "/"
+      ]
+    },
+    {
+      "page": "MembeerLoginPage",
+      "action": "fillEmailInput",
+      "params": [
+        "admin@serempre.com"
+      ]
+    },
+    {
+      "page": "MembeerLoginPage",
+      "action": "fillPasswordInput",
+      "params": [
+        "9nZ98£FQ6i,G"
+      ]
+    },
+    {
+      "page": "MembeerLoginPage",
+      "action": "clickContinuarButton",
+      "params": []
+    }
+  ]
+}

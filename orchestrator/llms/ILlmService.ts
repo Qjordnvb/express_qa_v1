@@ -1,14 +1,27 @@
 // orchestrator/llms/ILlmService.ts
 import { AIResponse } from '../types/types';
 
-// <-- NUEVO: Definimos la estructura de la respuesta del análisis de fallo
+// <-- ESTRUCTURA para análisis de fallos
 export interface AIFailureAnalysis {
   rootCause: string;
   repairSuggestion: string;
 }
 
+// <-- NUEVA: Estructura para decisiones de navegación MCP
+export interface AINavigationDecision {
+  action: 'navigate' | 'click' | 'type' | 'wait' | 'observe';
+  element?: {
+    role: string;
+    name: string;
+    ref: string;
+  };
+  params?: any[];
+  reasoning: string;
+}
+
 export interface ILlmService {
   getTestAssetsFromIA(prompt: string, imageBase64: string): Promise<AIResponse | null>;
-  // <-- NUEVO: Añade la firma de este nuevo método
   getFailureAnalysisFromIA(prompt: string): Promise<AIFailureAnalysis | null>;
+  // <-- NUEVO: Método específico para decisiones de navegación
+  getNavigationDecisionFromIA(prompt: string): Promise<AINavigationDecision | null>;
 }

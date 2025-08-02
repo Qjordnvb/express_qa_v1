@@ -1,0 +1,139 @@
+{
+  "pageObject": {
+    "className": "SmartCommsLoginPage",
+    "locators": [
+      {
+        "name": "loginAbInbevButton",
+        "elementType": "button",
+        "actions": [
+          "click"
+        ],
+        "selectors": [
+          {
+            "type": "getByRole",
+            "value": "button",
+            "options": {
+              "name": "Ingresa por Ab-Inbev"
+            }
+          },
+          {
+            "type": "getByText",
+            "value": "Ingresa por Ab-Inbev"
+          }
+        ],
+        "waitBefore": "visible"
+      }
+    ]
+  },
+  "additionalPageObjects": [
+    {
+      "className": "MicrosoftLoginPage",
+      "locators": [
+        {
+          "name": "emailInput",
+          "elementType": "input",
+          "actions": [
+            "fill"
+          ],
+          "selectors": [
+            {
+              "type": "css",
+              "value": "[type='email']"
+            }
+          ]
+        },
+        {
+          "name": "passwordInput",
+          "elementType": "input",
+          "actions": [
+            "fill"
+          ],
+          "selectors": [
+            {
+              "type": "css",
+              "value": "[type='password']"
+            }
+          ]
+        },
+        {
+          "name": "submitButton",
+          "elementType": "button",
+          "actions": [
+            "click"
+          ],
+          "selectors": [
+            {
+              "type": "css",
+              "value": "button[type='submit']"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "className": "SmartCommsDashboardPage",
+      "locators": [
+        {
+          "name": "dashboardTitle",
+          "elementType": "text",
+          "actions": [],
+          "selectors": [
+            {
+              "type": "getByText",
+              "value": "Dashboard"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "testSteps": [
+    {
+      "page": "SmartCommsLoginPage",
+      "action": "navigate",
+      "params": [
+        "/login"
+      ],
+      "assert": {}
+    },
+    {
+      "page": "SmartCommsLoginPage",
+      "action": "clickLoginAbInbevButton",
+      "params": [],
+      "waitFor": {
+        "element": "emailInput",
+        "state": "visible"
+      },
+      "assert": {}
+    },
+    {
+      "page": "MicrosoftLoginPage",
+      "action": "fillEmailInput",
+      "params": [
+        "example@example.com"
+      ],
+      "assert": {}
+    },
+    {
+      "page": "MicrosoftLoginPage",
+      "action": "fillPasswordInput",
+      "params": [
+        "xxxxxxxxxxxxx***$"
+      ],
+      "assert": {}
+    },
+    {
+      "page": "MicrosoftLoginPage",
+      "action": "clickSubmitButton",
+      "params": [],
+      "waitFor": {
+        "element": "dashboardTitle",
+        "state": "visible"
+      },
+      "assert": {
+        "type": "textVisible",
+        "expected": "Dashboard"
+      }
+    }
+  ]
+}
