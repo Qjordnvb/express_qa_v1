@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Express QA v1 is an AI-powered test automation framework that generates Playwright tests from natural language user stories. The system combines traditional Page Object Model patterns with advanced AI services, real-time DOM analysis via Model Context Protocol (MCP), and machine learning-based test repair.
+Express QA v5 is an AI-powered test automation framework that generates Playwright tests from natural language user stories. The system combines traditional Page Object Model patterns with advanced AI services, real-time DOM analysis via Model Context Protocol (MCP), and machine learning-based test repair.
 
 ## Essential Development Commands
 
@@ -103,19 +103,20 @@ The orchestrator is the brain of the system, coordinating AI services, real-time
 ### Test Structure (`tests/`)
 
 - **Data-Driven Tests**: JSON test data in `tests/data/`
-- **Generated Tests**: AI-created specs in `tests/generated/`
-- **Manual Tests**: Hand-written tests for specific scenarios
+- **Generated Tests**: AI-created specs in `tests/generated/` (currently empty, generated on demand)
+- **Manual Tests**: Hand-written tests including visual regression tests
 - **Multi-browser Execution**: Chromium, Firefox, WebKit with parallel workers
 
 ## Key Configuration Files
 
 ### `playwright.config.ts`
-- Multi-browser configuration with anti-detection measures
+- Multi-browser configuration with anti-detection measures (Chromium, Firefox, WebKit)
 - Base URL set to `https://admin-dev.membeers.com` (change for your target site)
 - Retry strategy: 0 retries locally, 2 retries in CI
 - Custom timeout configurations (60s test timeout, 10s expect timeout)
 - HTML and JSON reporters for comprehensive test results
-- Non-headless mode by default for better debugging
+- Non-headless mode by default for better debugging and human-like behavior
+- Advanced user agent spoofing and bot detection avoidance
 
 ### `orchestrator/types/types.ts`
 Unified type system defining the AI-to-code contract:
@@ -140,8 +141,10 @@ ANTHROPIC_API_KEY="your-anthropic-key"
 
 ### Docker Requirements
 - Docker Engine 20.10.0+ required for containerized execution
+- Docker Compose for simplified container management
 - No local Node.js installation needed for basic test execution
 - Local Node.js 18+ and npm required for AI orchestration (`npm run orchestrate`)
+- User ID/Group ID mapping supported for permission handling
 
 ## Critical System Components
 
@@ -174,11 +177,7 @@ Create JSON files in `orchestrator/user-stories/`:
 {
   "name": "Descriptive Test Name",
   "path": "/target/page/path",
-  "userStory": [
-    "GIVEN I am on the target page",
-    "WHEN I perform some action", 
-    "THEN I should see expected result"
-  ]
+  "userStory": "Natural language description of the test scenario including Given-When-Then or simple narrative format"
 }
 ```
 
