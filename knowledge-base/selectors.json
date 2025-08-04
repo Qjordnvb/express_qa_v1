@@ -98,7 +98,7 @@
     "failedSelectors": [
       "getByLabel:Email"
     ],
-    "lastUpdated": "2025-07-28T01:07:55.065Z",
+    "lastUpdated": "2025-08-04T02:31:30.466Z",
     "successRate": 50
   },
   "https://admin-dev.membeers.com/-passwordInput": {
@@ -110,7 +110,7 @@
     "failedSelectors": [
       "getByLabel:Contraseña"
     ],
-    "lastUpdated": "2025-07-28T01:07:55.065Z",
+    "lastUpdated": "2025-08-04T02:31:30.466Z",
     "successRate": 50
   },
   "https://admin-dev.membeers.com/-continueButton": {
@@ -132,7 +132,7 @@
     "failedSelectors": [
       "getByRole:button{\"name\":\"Continuar\"}"
     ],
-    "lastUpdated": "2025-07-27T17:58:02.262Z",
+    "lastUpdated": "2025-08-04T02:31:30.466Z",
     "successRate": 0
   },
   "https://admin-dev.membeers.com/-errorMessage": {
@@ -142,7 +142,7 @@
     "failedSelectors": [
       "css:.error-message"
     ],
-    "lastUpdated": "2025-07-27T17:58:02.262Z",
+    "lastUpdated": "2025-08-04T02:31:30.466Z",
     "successRate": 0
   },
   "https://www.google.com/-searchInput": {

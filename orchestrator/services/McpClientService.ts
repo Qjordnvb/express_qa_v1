@@ -811,6 +811,28 @@ export class MCPClientService {
       });
     }
 
+    // ✅ NUEVO: Selectores para elementos dinámicos
+    if (element.attributes?.dataTestId || element.dataTestId) {
+      selectors.push({
+        type: 'getByTestId',
+        value: element.attributes?.dataTestId || element.dataTestId
+      });
+    }
+
+    if (element.attributes?.dataCy || element.dataCy) {
+      selectors.push({
+        type: 'css',
+        value: `[data-cy="${element.attributes?.dataCy || element.dataCy}"]`
+      });
+    }
+
+    if (element.attributes?.dataQa || element.dataQa) {
+      selectors.push({
+        type: 'css',
+        value: `[data-qa="${element.attributes?.dataQa || element.dataQa}"]`
+      });
+    }
+
     // Selector por texto
     if (element.text) {
       selectors.push({
@@ -823,29 +845,120 @@ export class MCPClientService {
   }
 
   /**
-   * Infiere el tagName basado en el role y tipo
+   * Infiere el tagName basado en el role y tipo con convenciones HTML estándar
    */
   private inferTagName(element: any): string {
     const type = element.attributes?.type || element.type;
+    const role = element.role?.toLowerCase();
 
-    if (element.role === 'textbox') {
-      return type === 'textarea' ? 'textarea' : 'input';
+    // Elementos de input por tipo específico
+    if (role === 'textbox') {
+      if (type === 'textarea') return 'textarea';
+      if (type === 'email') return 'input';
+      if (type === 'password') return 'input';
+      if (type === 'tel') return 'input';
+      if (type === 'url') return 'input';
+      if (type === 'search') return 'input';
+      if (type === 'number') return 'input';
+      if (type === 'date') return 'input';
+      if (type === 'datetime-local') return 'input';
+      if (type === 'time') return 'input';
+      if (type === 'week') return 'input';
+      if (type === 'month') return 'input';
+      if (type === 'color') return 'input';
+      return 'input'; // fallback para textbox
     }
-    if (element.role === 'button') {
+
+    // Elementos de botón
+    if (role === 'button') {
+      if (type === 'submit') return 'button';
+      if (type === 'reset') return 'button';
+      if (type === 'button') return 'button';
       return 'button';
     }
-    if (element.role === 'link') {
+
+    // Elementos de enlace
+    if (role === 'link') {
       return 'a';
     }
-    if (element.role === 'combobox') {
+
+    // Elementos de selección
+    if (role === 'combobox' || role === 'listbox') {
       return 'select';
     }
+
+    // Elementos de checkbox y radio
+    if (role === 'checkbox') {
+      return 'input';
+    }
+    if (role === 'radio') {
+      return 'input';
+    }
+
+    // Elementos semánticos HTML5
+    if (role === 'main') return 'main';
+    if (role === 'navigation') return 'nav';
+    if (role === 'article') return 'article';
+    if (role === 'section') return 'section';
+    if (role === 'aside') return 'aside';
+    if (role === 'header') return 'header';
+    if (role === 'footer') return 'footer';
+    if (role === 'figure') return 'figure';
+
+    // Elementos de encabezado
+    if (role === 'heading') {
+      // Intentar inferir nivel si está disponible
+      const level = element.attributes?.level || element.attributes?.['aria-level'];
+      if (level >= 1 && level <= 6) {
+        return `h${level}`;
+      }
+      return 'h1'; // fallback
+    }
+
+    // Elementos de lista
+    if (role === 'list') return 'ul';
+    if (role === 'listitem') return 'li';
+
+    // Elementos de tabla
+    if (role === 'table') return 'table';
+    if (role === 'row') return 'tr';
+    if (role === 'cell' || role === 'gridcell') return 'td';
+    if (role === 'columnheader' || role === 'rowheader') return 'th';
+
+    // Elementos de formulario
+    if (role === 'form') return 'form';
+    if (role === 'group') return 'fieldset';
+
+    // Elementos de multimedia
+    if (role === 'img') return 'img';
+
+    // Elementos de entrada de archivos
+    if (type === 'file') return 'input';
+    if (type === 'range') return 'input';
+    if (type === 'hidden') return 'input';
+
+    // Elementos interactivos
+    if (role === 'slider') return 'input';
+    if (role === 'spinbutton') return 'input';
+    if (role === 'progressbar') return 'progress';
+    if (role === 'meter') return 'meter';
+
+    // Elementos de texto
+    if (role === 'paragraph') return 'p';
+    if (role === 'blockquote') return 'blockquote';
+    if (role === 'code') return 'code';
+    if (role === 'emphasis') return 'em';
+    if (role === 'strong') return 'strong';
+
+    // Elementos de diálogo
+    if (role === 'dialog') return 'dialog';
+    if (role === 'alertdialog') return 'dialog';
 
     return 'div'; // fallback
   }
 
   /**
-   * REHABILITADO: Extrae datos HTML reales usando browser_evaluate (SOLUCIÓN EXITOSA)
+   * REHABILITADO + MEJORADO: Extrae datos HTML reales + elementos dinámicos usando browser_evaluate
    */
   private async getJavaScriptElementData(): Promise<any[]> {
     if (!this.mcpClient) {
@@ -860,9 +973,34 @@ export class MCPClientService {
         name: 'browser_evaluate',
         arguments: {
           function: `() => {
-            // Extraer TODOS los elementos interactivos con atributos HTML REALES
-            const selector = 'input, button, select, textarea, a[href], [role], [tabindex]:not([tabindex="-1"])';
-            const elements = document.querySelectorAll(selector);
+            // Extraer TODOS los elementos interactivos con atributos HTML REALES + ELEMENTOS DINÁMICOS
+            const baseSelector = 'input, button, select, textarea, a[href], [role], [tabindex]:not([tabindex="-1"])';
+            
+            // Selectores adicionales para elementos dinámicos
+            const dynamicSelectors = [
+              '[data-testid]',
+              '[data-cy]', 
+              '[data-qa]',
+              '[data-automation]',
+              '[id*="react"]',
+              '[id*="ember"]',
+              '[id*="vue"]',
+              '[class*="component"]',
+              '[class*="widget"]',
+              '[aria-live]',
+              '[role="status"]',
+              '[role="alert"]',
+              '.loading',
+              '.spinner',
+              '.skeleton',
+              '[onclick]',
+              '[onchange]',
+              '[onsubmit]'
+            ];
+            
+            // Combinar selectores base + dinámicos
+            const allSelectors = baseSelector + ', ' + dynamicSelectors.join(', ');
+            const elements = document.querySelectorAll(allSelectors);
 
             return Array.from(elements).map((el, index) => {
               // Obtener TODOS los atributos HTML reales
@@ -886,6 +1024,14 @@ export class MCPClientService {
                   role: el.getAttribute('role') || '',
                   ariaLabel: el.getAttribute('aria-label') || '',
                   ariaLabelledby: el.getAttribute('aria-labelledby') || '',
+                  ariaLive: el.getAttribute('aria-live') || '',
+                  ariaHidden: el.getAttribute('aria-hidden') || '',
+
+                  // ✅ NUEVO: Atributos para elementos dinámicos
+                  dataTestId: el.getAttribute('data-testid') || '',
+                  dataCy: el.getAttribute('data-cy') || '',
+                  dataQa: el.getAttribute('data-qa') || '',
+                  dataAutomation: el.getAttribute('data-automation') || '',
 
                   // Texto y contenido
                   textContent: el.textContent?.trim().substring(0, 100) || '',
@@ -897,6 +1043,27 @@ export class MCPClientService {
                   readonly: el.readOnly || false,
                   checked: el.checked || false,
                   selected: el.selected || false,
+
+                  // ✅ NUEVO: Detectar elementos dinámicos
+                  isDynamic: !!(
+                    el.getAttribute('data-testid') ||
+                    el.getAttribute('data-cy') ||
+                    el.getAttribute('data-qa') ||
+                    el.getAttribute('aria-live') ||
+                    el.className.includes('loading') ||
+                    el.className.includes('spinner') ||
+                    el.className.includes('component') ||
+                    el.onclick ||
+                    el.onchange
+                  ),
+
+                  // ✅ NUEVO: Tipo de elemento dinámico
+                  dynamicType: el.getAttribute('aria-live') ? 'live-region' :
+                              el.className.includes('loading') ? 'loading' :
+                              el.className.includes('spinner') ? 'spinner' :
+                              el.onclick ? 'interactive' :
+                              el.getAttribute('data-testid') ? 'test-target' :
+                              'standard',
 
                   // Posición
                   boundingBox: {
@@ -919,7 +1086,7 @@ export class MCPClientService {
 
         // Intentar regex primero (método documentado)
         const resultMatch = textContent.match(/### Result\n(.*?)(?:\n\n###|$)/s);
-        let jsonData;
+        let jsonData: string;
 
         if (resultMatch) {
           jsonData = resultMatch[1].trim();
@@ -938,8 +1105,8 @@ export class MCPClientService {
           const htmlElements = JSON.parse(jsonData);
           console.log(`[MCP] ✅ HTML parseado: ${htmlElements.length} elementos`);
 
-          // Debug: Mostrar tipos detectados
-          htmlElements.forEach(el => {
+          // Debug: Mostrar tipos detectados incluyendo elementos dinámicos
+          htmlElements.forEach((el: any) => {
             if (el.type === 'password') {
               console.log(`[MCP] 🔐 PASSWORD detectado: #${el.id}`);
             }
@@ -948,6 +1115,9 @@ export class MCPClientService {
             }
             if (el.type === 'submit') {
               console.log(`[MCP] 🚀 SUBMIT detectado: "${el.textContent}"`);
+            }
+            if (el.isDynamic) {
+              console.log(`[MCP] ⚡ DINÁMICO detectado: ${el.dynamicType} - ${el.dataTestId || el.dataCy || el.id || el.className}`);
             }
           });
 
@@ -1186,6 +1356,28 @@ export class MCPClientService {
         selectors.push({
           type: 'getByPlaceholder',
           value: jsEl.placeholder
+        });
+      }
+
+      // ✅ NUEVO: Selectores dinámicos basados en atributos de testing
+      if (jsEl.dataTestId) {
+        selectors.push({
+          type: 'getByTestId',
+          value: jsEl.dataTestId
+        });
+      }
+
+      if (jsEl.dataCy) {
+        selectors.push({
+          type: 'css',
+          value: `[data-cy="${jsEl.dataCy}"]`
+        });
+      }
+
+      if (jsEl.dataQa) {
+        selectors.push({
+          type: 'css',
+          value: `[data-qa="${jsEl.dataQa}"]`
         });
       }
 

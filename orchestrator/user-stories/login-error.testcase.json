@@ -3,9 +3,9 @@
   "path": "/",
   "userStory": [
     "DADO que estoy en la página de inicio de sesión de Membeers",
-    "CUANDO lleno el campo de email con 'usuario@prueba.com'",
-    "Y lleno el campo de contraseña con 'password-incorrecto'",
+    "CUANDO lleno el campo de email con 'cualquiercorreo@gmail.com'",
+    "Y lleno el campo de contraseña con 'Jv23861739*'",
     "Y hago clic en el botón para iniciar sesión",
-    "ENTONCES debería ver un mensaje de error"
+    "ENTONCES debería ver un mensaje de error con el texto 'Las credenciales son incorrectas'"
   ]
 }

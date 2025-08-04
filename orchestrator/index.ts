@@ -73,11 +73,28 @@ ${JSON.stringify(mcpContext.accessibilityTree, null, 2).substring(0, 2000)}...
 6. **SELECTORES RESILIENTES:** Genera múltiples selectores basados en los datos MCP + análisis visual
 7. **DISABLED/CHECKED:** Considera los estados 'disabled' y 'checked' reportados por MCP
 
+🚨 **DETECCIÓN DE ELEMENTOS DINÁMICOS/TOASTS:**
+Si detectas elementos con estas características, son mensajes dinámicos (toasts, alerts, errors):
+- role="alert" en datos MCP
+- className contiene "Toastify", "toast", "error", "alert", "notification"
+- Elementos que aparecen después de acciones (login fallido, formularios)
+
+**SELECTORES PRIORITARIOS PARA TOASTS/ERRORES:**
+1. { "type": "getByRole", "value": "alert" }
+2. { "type": "css", "value": ".Toastify__toast" }
+3. { "type": "css", "value": ".Toastify__toast-body" }
+4. { "type": "css", "value": "[role='alert']" }
+5. { "type": "css", "value": ".toast" }
+6. { "type": "css", "value": ".error-message" }
+7. { "type": "getByText", "value": "texto_específico_del_mensaje" }
+
 **EJEMPLO DE USO MCP:**
 - MCP detecta: {"role": "button", "name": "Log In", "disabled": false}
 - GENERAR: {"type": "getByRole", "value": "button", "options": {"name": "Log In"}}
 - MCP detecta: {"role": "textbox", "name": "Email address"}
 - GENERAR: {"type": "getByRole", "value": "textbox", "options": {"name": "Email address"}}
+- MCP detecta: {"role": "alert", "name": "", "className": "Toastify__toast"}
+- GENERAR: {"type": "getByRole", "value": "alert"} + fallbacks CSS
 
 ` : '**ANÁLISIS MCP:** No disponible - usando solo análisis visual y patrones detectados.\n';
 
@@ -188,7 +205,7 @@ ${JSON.stringify(mcpContext.accessibilityTree, null, 2).substring(0, 2000)}...
      * validateAfter: true (si causa navegación o cambios importantes)
 
    - **text/alerts/messages** (elementType: "text" o "alert"):
-     * actions: [] (vacío, son solo lectura)
+     * actions: ["waitFor", "assertText", "assertVisible"] (para elementos dinámicos que necesitan validación)
      * waitBefore: "visible"
      * En testSteps usar: "waitFor[Nombre]Visible" y/o "assert[Nombre]Text"
 
@@ -218,6 +235,25 @@ ${JSON.stringify(mcpContext.accessibilityTree, null, 2).substring(0, 2000)}...
 
    EJEMPLO DE ASERCIÓN "textVisible":
    "assert": { "type": "textVisible", "expected": "Texto a verificar" }
+
+   🚨 PATRÓN ESPECIAL PARA MENSAJES DE ERROR DINÁMICOS:
+   Si la historia menciona "ENTONCES debería ver un mensaje de error" con texto específico:
+   1. PRIMER PASO: "waitFor[ElementName]Visible" - esperar que aparezca el elemento
+   2. SEGUNDO PASO: "assert[ElementName]Text" - verificar el texto específico
+
+   EJEMPLO ESPECÍFICO PARA ERRORES:
+   Historia: "ENTONCES debería ver un mensaje de error con el texto 'Las credenciales son incorrectas'"
+   GENERAR DOS PASOS SEPARADOS:
+   {
+     "action": "waitForErrorMessageVisible",
+     "params": [],
+     "waitFor": { "element": "errorMessage", "state": "visible" }
+   },
+   {
+     "action": "assertErrorMessageText", 
+     "params": ["Las credenciales son incorrectas"],
+     "assert": { "type": "textVisible", "expected": "Las credenciales son incorrectas" }
+   }
 
    REQUISITOS ESTRICTOS:
    - El JSON debe ser válido (comas correctas, comillas dobles)
@@ -278,10 +314,13 @@ ${JSON.stringify(mcpContext.accessibilityTree, null, 2).substring(0, 2000)}...
          {
            "name": "errorMessage",
            "elementType": "alert",
-           "actions": [],
+           "actions": ["waitFor", "assertText", "assertVisible"],
            "selectors": [
-             { "type": "getByText", "value": "string" },
-             { "type": "locator", "value": ".alert-danger" }
+             { "type": "getByRole", "value": "alert" },
+             { "type": "css", "value": ".Toastify__toast" },
+             { "type": "css", "value": "[role='alert']" },
+             { "type": "css", "value": ".error-message" },
+             { "type": "getByText", "value": "texto_específico_del_error" }
            ],
            "waitBefore": "visible"
          }

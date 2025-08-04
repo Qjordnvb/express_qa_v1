@@ -18,7 +18,7 @@ interface SelectorDef {
 interface LocatorAction {
   name: string;
   elementType?: string;
-  actions: ('click' | 'fill' | 'check' | 'select' | 'clear' | 'getValue')[];
+  actions: ('click' | 'fill' | 'check' | 'select' | 'clear' | 'getValue' | 'assertText' | 'assertVisible' | 'waitFor')[];
   selectors: SelectorDef[];
   waitBefore?: string;
   validateAfter?: boolean;
@@ -81,6 +81,10 @@ const buildLocatorsArray = (selectors: SelectorDef[]): string => {
     switch (s.type) {
       // La sintaxis ahora es correcta: ('valor', {opciones})
       case 'getByRole':
+        // Para alerts dinámicos, no usar texto específico si es muy largo
+        if (value === 'alert' && options && options.name && options.name.length > 20) {
+          return `      this.page.getByRole('alert')`;
+        }
         return `      this.page.getByRole('${value}'${optionsString})`;
       case 'getByLabel':
         return `      this.page.getByLabel('${value}'${optionsString})`;
@@ -122,7 +126,7 @@ const generateMethodsForElement = (loc: LocatorAction, testSteps: TestStep[]): s
   async waitFor${elementName}Visible(timeout: number = 10000): Promise<void> {
 ${buildLocatorsArray(loc.selectors)}
     const element = await this.findSmartly(locators, '${description}');
-    await element.waitFor({ state: 'visible', timeout });
+    await expect(element).toBeVisible({ timeout });
     console.log('${description} es visible');
   }`,
     `waitFor${elementName}Visible`,
@@ -214,7 +218,10 @@ ${buildLocatorsArray(loc.selectors)}
   // Generar métodos para acciones definidas, ahora usando la lista enriquecida.
   allRequiredActions.forEach((action) => {
     let method = '';
-    const methodName = `${action}${elementName}`;
+    // Para actions de assert, usar formato assert[Element][Action]
+    const methodName = action.startsWith('assert')
+      ? `assert${elementName}${action.substring(6)}`  // assertElementText, assertElementVisible
+      : `${action}${elementName}`;
 
     switch (action) {
       case 'fill':
@@ -347,6 +354,46 @@ ${buildLocatorsArray(loc.selectors)}
     const element = await this.findSmartly(locators, '${description}');
     await element.selectOption(value);
     console.log(\`Opción seleccionada en ${description}\`);
+  }`;
+        break;
+
+      case 'assertText':
+        method = `
+  /**
+   * Verifica que ${description} contenga el texto esperado
+   */
+  async ${methodName}(expectedText: string): Promise<void> {
+${buildLocatorsArray(loc.selectors)}
+    const element = await this.findSmartly(locators, '${description}');
+    await element.waitFor({ state: 'visible', timeout: 5000 });
+    await expect(element).toContainText(expectedText);
+    console.log(\`${description} contiene el texto esperado: "\${expectedText}"\`);
+  }`;
+        break;
+
+      case 'assertVisible':
+        method = `
+  /**
+   * Verifica que ${description} esté visible
+   */
+  async ${methodName}(): Promise<void> {
+${buildLocatorsArray(loc.selectors)}
+    const element = await this.findSmartly(locators, '${description}');
+    await expect(element).toBeVisible();
+    console.log(\`${description} está visible\`);
+  }`;
+        break;
+
+      case 'waitFor':
+        method = `
+  /**
+   * Espera a que ${description} esté disponible
+   */
+  async ${methodName}(timeout: number = 10000): Promise<void> {
+${buildLocatorsArray(loc.selectors)}
+    const element = await this.findSmartly(locators, '${description}');
+    await element.waitFor({ state: 'visible', timeout });
+    console.log(\`${description} está disponible\`);
   }`;
         break;
     }
