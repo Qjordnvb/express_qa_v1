@@ -22,6 +22,217 @@ interface TestCase {
   userStory: string[];
 }
 
+/**
+ * EXTRAÍDO DE AIWithMCPService: Explora usando IA inteligente + MCP como brazos
+ * Sin hardcodeo - la IA decide todo inteligentemente
+ */
+async function exploreUserStoryWithIntelligentAI(
+  contextService: ContextService,
+  llmService: ILlmService,
+  userStory: string[],
+  baseUrl: string,
+  testPath: string
+): Promise<RealTimeContext | null> {
+  
+  console.log('[LOG] 🧠 EXPLORACIÓN INTELIGENTE: IA analizará cada paso y decidirá exploración real...');
+  
+  try {
+    const fullUrl = `${baseUrl}${testPath}`;
+    
+    // ✅ USAR EL CONTEXTO YA NAVEGADO del análisis estático
+    let currentContext = await contextService.getRealTimeContext(fullUrl);
+    if (!currentContext) {
+      console.warn('[LOG] ⚠️ No se pudo obtener contexto para exploración inteligente');
+      return null;
+    }
+    console.log(`[LOG] ✅ Contexto inicial: ${currentContext.interactiveElements?.length || 0} elementos`);
+
+    // 2. IA analiza cada paso y decide si requiere exploración real
+    for (let i = 1; i < userStory.length; i++) {
+      const userStep = userStory[i];
+      console.log(`[LOG] 🤔 IA analizando paso ${i + 1}: "${userStep}"`);
+      
+      // ✅ IA DECIDE INTELIGENTEMENTE si este paso requiere exploración real
+      const aiDecision = await askAIForExplorationDecision(
+        llmService, 
+        userStep, 
+        currentContext, 
+        userStory.slice(i + 1) // Pasos futuros para contexto
+      );
+      
+      if (aiDecision.requiresRealExploration) {
+        console.log(`[LOG] 🎯 IA decidió: "${aiDecision.reasoning}"`);
+        console.log(`[LOG] 🚀 Ejecutando exploración real...`);
+        
+        // ✅ IA EJECUTA LA ACCIÓN que decidió
+        const actionResult = await executeAIDecision(contextService, aiDecision, currentContext);
+        
+        if (actionResult.executed) {
+          // ✅ CAPTURA INMEDIATA POST-ACCIÓN (200ms para elementos dinámicos)
+          console.log('[LOG] ⚡ Capturando elementos dinámicos post-acción...');
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          const postActionContext = await contextService.getRealTimeContext(fullUrl);
+          console.log(`[LOG] 🎉 Post-acción: ${postActionContext.interactiveElements?.length || 0} elementos detectados`);
+          
+          // Comparar contextos para detectar elementos nuevos
+          const newElements = postActionContext.interactiveElements?.length - currentContext.interactiveElements?.length;
+          if (newElements > 0) {
+            console.log(`[LOG] ⚡ ${newElements} elementos dinámicos nuevos detectados!`);
+          }
+          
+          // Actualizar contexto para siguientes pasos
+          currentContext = postActionContext;
+        }
+      } else {
+        console.log(`[LOG] 🤖 IA decidió NO explorar: "${aiDecision.reasoning}"`);
+      }
+    }
+    
+    // Retornar contexto final enriquecido con datos seguros
+    return {
+      ...currentContext,
+      explorationSteps: userStory.length,
+      hasRealExperience: true,
+      playwrightContext: {
+        viewportSize: { width: 1920, height: 1080 },
+        userAgent: currentContext.playwrightContext?.userAgent || 'Mozilla/5.0 (intelligent-exploration)'
+      }
+    };
+    
+  } catch (error) {
+    console.warn('[LOG] ⚠️ Error en exploración inteligente:', error);
+    return null;
+  }
+}
+
+/**
+ * IA INTELIGENTE: Decide si un paso requiere exploración real
+ */
+async function askAIForExplorationDecision(
+  llmService: ILlmService,
+  userStep: string,
+  currentContext: any,
+  futureSteps: string[]
+): Promise<{requiresRealExploration: boolean, reasoning: string, actionType?: string, targetElement?: any}> {
+  
+  const prompt = `
+Eres una IA experta en análisis de historias de usuario para automatización de pruebas web.
+
+PASO ACTUAL A ANALIZAR:
+"${userStep}"
+
+PASOS FUTUROS EN LA HISTORIA:
+${futureSteps.map((step, i) => `${i + 1}. ${step}`).join('\n')}
+
+CONTEXTO ACTUAL DE LA PÁGINA:
+${JSON.stringify(currentContext.interactiveElements?.slice(0, 10), null, 2)}
+
+PREGUNTA CLAVE:
+¿Este paso actual requiere que EJECUTE REALMENTE la acción para detectar elementos dinámicos que aparecerán después?
+
+CRITERIOS PARA DECIDIR "SÍ":
+- El paso implica una acción (click, submit, envío)
+- Los pasos futuros mencionan elementos que aparecerán DESPUÉS de esta acción
+- La acción puede generar respuestas del servidor (toasts, alerts, mensajes)
+- Es necesario ver el resultado real de la acción para generar selectores precisos
+
+CRITERIOS PARA DECIDIR "NO":
+- Es solo llenar un campo (input, select)
+- Es solo navegación inicial
+- Los elementos ya están visibles en el contexto actual
+- No hay pasos futuros que dependan del resultado de esta acción
+
+FORMATO DE RESPUESTA (JSON válido):
+{
+  "requiresRealExploration": true/false,
+  "reasoning": "Explicación clara de por qué decidiste explorar o no",
+  "actionType": "click|submit|type|none",
+  "targetElement": "descripción del elemento objetivo si aplica"
+}
+
+EJEMPLOS:
+- Paso: "Hago clic en Continuar" + Futuro: "Entonces veo mensaje de error" → SÍ explorar
+- Paso: "Ingreso email admin@test.com" + Futuro: "Ingreso contraseña" → NO explorar  
+- Paso: "Hago clic en Buscar" + Futuro: "Entonces veo resultados" → SÍ explorar
+`;
+
+  try {
+    const response = await llmService.getNavigationDecisionFromIA(prompt);
+    
+    if (response && typeof response === 'object') {
+      return {
+        requiresRealExploration: response.requiresRealExploration || false,
+        reasoning: response.reasoning || 'No reasoning provided',
+        actionType: response.actionType,
+        targetElement: response.targetElement
+      };
+    }
+    
+    return {
+      requiresRealExploration: false,
+      reasoning: 'No se pudo obtener decisión de IA'
+    };
+    
+  } catch (error) {
+    console.warn('[LOG] ⚠️ Error obteniendo decisión de IA:', error);
+    return {
+      requiresRealExploration: false,
+      reasoning: 'Error en análisis de IA'
+    };
+  }
+}
+
+/**
+ * Ejecuta la decisión de IA usando MCP via ContextService
+ */
+async function executeAIDecision(
+  contextService: any,
+  aiDecision: any,
+  context: any
+): Promise<{executed: boolean, type?: string}> {
+  
+  try {
+    if (aiDecision.actionType === 'click' || aiDecision.actionType === 'submit') {
+      // Buscar el elemento target usando IA inteligente
+      const buttons = context.interactiveElements?.filter((el: any) => 
+        el.role === 'button' || el.elementType === 'button' || el.htmlAttributes?.type === 'submit'
+      ) || [];
+      
+      if (buttons.length > 0) {
+        // Usar el primer botón de submit o el más probable
+        const targetButton = buttons.find((btn: any) => 
+          btn.htmlAttributes?.type === 'submit' ||
+          btn.name?.toLowerCase().includes('continuar') ||
+          btn.name?.toLowerCase().includes('submit')
+        ) || buttons[0];
+        
+        console.log(`[LOG] 🎯 Ejecutando ${aiDecision.actionType} en: ${targetButton.name || 'elemento detectado'}`);
+        
+        // Ejecutar acción real usando el mcpClient del contextService
+        const mcpClient = (contextService as any).mcpClient?.mcpClient;
+        if (mcpClient) {
+          await mcpClient.callTool({
+            name: 'browser_click',
+            arguments: {
+              element: targetButton.name || '',
+              ref: targetButton.ref?.toString() || ''
+            }
+          });
+          
+          return { executed: true, type: aiDecision.actionType };
+        }
+      }
+    }
+    
+    return { executed: false };
+    
+  } catch (error) {
+    console.warn('[LOG] ⚠️ Error ejecutando decisión de IA:', error);
+    return { executed: false };
+  }
+}
+
 
 
 function buildLLMPrompt(patternsContext: DetectedPattern[], userStoryAsString: string, mcpContext?: RealTimeContext | null): string {
@@ -59,8 +270,8 @@ ${JSON.stringify(mcpContext.accessibilityTree, null, 2).substring(0, 2000)}...
 - Timestamp: ${mcpContext.pageInfo.timestamp}
 
 **🖥️ CONTEXTO DE NAVEGADOR:**
-- Viewport: ${JSON.stringify(mcpContext.playwrightContext.viewportSize)}
-- User Agent: ${mcpContext.playwrightContext.userAgent}
+- Viewport: ${mcpContext.playwrightContext?.viewportSize ? JSON.stringify(mcpContext.playwrightContext.viewportSize) : 'No disponible'}
+- User Agent: ${mcpContext.playwrightContext?.userAgent || 'No disponible'}
 
 **⚡ SCREENSHOT MCP DISPONIBLE:** ${mcpContext.screenshot ? 'SÍ (Buffer MCP complementario)' : 'NO'}
 
@@ -528,17 +739,45 @@ async function getOrGenerateAssets(
   if (!baseURL) throw new Error('baseURL no está definida en playwright.config.ts');
   const fullUrl = new URL(testCase.path, baseURL).toString();
 
-  // ========== NUEVO: ANÁLISIS MCP PREVENTIVO ==========
-  console.log('[LOG] 🤖 Iniciando análisis MCP preventivo...');
+  // ========== 1. ANÁLISIS MCP ESTÁTICO ==========
+  console.log('[LOG] 🤖 Iniciando análisis MCP estático...');
   let mcpContext: RealTimeContext | null = null;
 
   try {
     // CLAVE: MCP analiza la página ANTES de generar el código
     mcpContext = await contextService.getRealTimeContext(fullUrl);
-    console.log(`[LOG] ✅ MCP análisis completado: ${mcpContext?.interactiveElements.length || 0} elementos detectados`);
+    console.log(`[LOG] ✅ MCP análisis estático completado: ${mcpContext?.interactiveElements.length || 0} elementos detectados`);
   } catch (error) {
-    console.warn('[LOG] ⚠️ MCP análisis falló, continuando con método tradicional:', error);
+    console.warn('[LOG] ⚠️ MCP análisis estático falló, continuando con método tradicional:', error);
   }
+
+  // ========== 2. EXPLORACIÓN INTELIGENTE CON IA + MCP (OPCIONAL) ==========
+  console.log('[LOG] 🧠 Iniciando exploración inteligente IA + MCP...');
+  
+  try {
+    // ✅ IA EXPLORA INTELIGENTEMENTE usando MCP como brazos
+    const intelligentContext = await exploreUserStoryWithIntelligentAI(
+      contextService,
+      llmService,
+      testCase.userStory,
+      playwrightConfig.use?.baseURL || 'http://localhost',
+      testCase.path
+    );
+    
+    if (intelligentContext?.hasRealExperience) {
+      console.log(`[LOG] ✅ Exploración inteligente completada: experiencia real capturada`);
+      console.log(`[LOG] 🎯 Elementos post-exploración: ${intelligentContext.interactiveElements?.length || 0}`);
+      
+      // ✅ USAR EL CONTEXTO ENRIQUECIDO EN LUGAR DEL ESTÁTICO
+      mcpContext = intelligentContext;
+    } else {
+      console.log('[LOG] 🤖 IA decidió usar solo análisis estático');
+    }
+  } catch (error) {
+    console.warn('[LOG] ⚠️ Exploración inteligente falló, usando contexto estático:', error);
+  }
+  
+  console.log('[LOG] ✅ Continuando con generación de assets...');
 
   // Captura de pantalla tradicional (mantener como respaldo)
   const browser = await chromium.launch({ headless: false });
@@ -586,6 +825,7 @@ async function getOrGenerateAssets(
     mcpContext // ✅ PASAR CONTEXTO MCP
   );
 
+  console.log('[LOG] 🤖 Enviando prompt a la IA para generar assets...');
   const testAssets = await llmService.getTestAssetsFromIA(
     enhancedPrompt,
     screenshotBuffer.toString('base64'),

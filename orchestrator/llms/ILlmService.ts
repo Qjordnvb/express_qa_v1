@@ -17,6 +17,10 @@ export interface AINavigationDecision {
   };
   params?: any[];
   reasoning: string;
+  // Propiedades para exploración inteligente
+  requiresRealExploration?: boolean;
+  actionType?: string;
+  targetElement?: string;
 }
 
 export interface ILlmService {

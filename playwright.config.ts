@@ -35,7 +35,7 @@ export default defineConfig({
   ],
 
   use: {
-    baseURL: 'https://admin-dev.membeers.com',
+    baseURL: 'https://ecommerce-playground.lambdatest.io',
 
     // 'on-first-retry' creará un trace.zip en el primer reintento de una prueba fallida.
     // Este archivo contiene DOM snapshots, logs de consola y peticiones de red.

@@ -132,10 +132,11 @@ NO incluyas explicaciones, código markdown, ni texto adicional.`;
         jsonText = jsonMatch[0];
       }
       
-      const decision = JSON.parse(jsonText) as AINavigationDecision;
+      const decision = JSON.parse(jsonText);
       
-      console.log(`✅ IA decidió: ${decision.action} ${decision.element?.name || ''}`);
-      return decision;
+      console.log(`✅ IA decidió: ${decision.requiresRealExploration ? 'EXPLORAR' : 'NO EXPLORAR'} (${decision.actionType || 'ninguna acción'})`);
+      
+      return decision as AINavigationDecision;
       
     } catch (error) {
       console.error('❌ Error al obtener decisión de navegación:', error);
