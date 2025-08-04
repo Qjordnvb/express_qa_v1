@@ -32,6 +32,10 @@ export interface RealTimeContext {
     viewportSize: any;
     userAgent: string;
   };
+
+  // Campos para exploración inteligente
+  explorationSteps?: number;
+  hasRealExperience?: boolean;
 }
 
 export class ContextService {
