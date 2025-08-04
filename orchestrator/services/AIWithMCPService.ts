@@ -216,7 +216,7 @@ INSTRUCCIONES PARA ANÁLISIS INTELIGENTE:
 
 🧠 CAPACIDADES DE LA IA SIN HARDCODEO:
 1. **Análisis híbrido**: Combina información ARIA (estructura) con HTML completo (atributos exactos)
-2. **Detección directa**: Busca `type="password"`, `type="email"`, `placeholder=""` directamente en el HTML
+2. **Detección directa**: Busca \`type="password"\`, \`type="email"\`, \`placeholder=""\` directamente en el HTML
 3. **Matching inteligente**: Correlaciona elementos ARIA con HTML por proximidad y contexto
 4. **Flexibilidad total**: No usa reglas hardcodeadas, adapta el análisis a cualquier sitio web
 
@@ -256,7 +256,7 @@ Ejemplo 1 - Campo de email:
 
 Ejemplo 2 - Campo de contraseña usando HTML completo:
 - Paso: "Y ingreso mi contraseña '123456' en el campo de contraseña"  
-- Si encuentras en HTML: `<input type="password" name="password" placeholder="Contraseña" class="form-control">`
+- Si encuentras en HTML: \`<input type="password" name="password" placeholder="Contraseña" class="form-control">\`
 - Y en ARIA: {"role": "textbox", "name": "- textbox", "ref": "e32"}
 - Respuesta: {"action": "type", "element": {"role": "textbox", "name": "password field", "ref": "e32"}, "params": ["123456"], "reasoning": "Correlacioné el elemento ARIA textbox [e32] con el HTML input[type='password']. El type='password' en el HTML confirma que es el campo de contraseña correcto."}
 
@@ -267,7 +267,7 @@ Ejemplo 3 - Botón de acción:
 
 🚨 IMPORTANTE - ANÁLISIS SIN HARDCODEO:
 - Usa TANTO la información ARIA COMO el HTML completo para identificar elementos
-- Busca atributos HTML exactos: `type="password"`, `type="email"`, `placeholder=""`, `name=""`
+- Busca atributos HTML exactos: \`type="password"\`, \`type="email"\`, \`placeholder=""\`, \`name=""\`
 - Correlaciona elementos ARIA (con refs) con elementos HTML (con atributos)
 - NO uses reglas hardcodeadas, adapta tu análisis al contenido real de la página
 - La IA debe ser inteligente para cualquier sitio web, no solo casos específicos

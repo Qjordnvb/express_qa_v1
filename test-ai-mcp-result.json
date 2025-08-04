@@ -16,6 +16,22 @@
             "options": {
               "name": "Email"
             }
+          },
+          {
+            "type": "css",
+            "value": "#email"
+          },
+          {
+            "type": "css",
+            "value": "input[type=\"email\"]"
+          },
+          {
+            "type": "css",
+            "value": "[name=\"email\"]"
+          },
+          {
+            "type": "getByPlaceholder",
+            "value": "mail@mail.com"
           }
         ],
         "waitBefore": "visible",
@@ -30,11 +46,20 @@
         ],
         "selectors": [
           {
-            "type": "getByRole",
-            "value": "textbox",
-            "options": {
-              "name": "- textbox"
-            }
+            "type": "css",
+            "value": "#password"
+          },
+          {
+            "type": "css",
+            "value": "input[type=\"password\"]"
+          },
+          {
+            "type": "css",
+            "value": "[name=\"password\"]"
+          },
+          {
+            "type": "getByPlaceholder",
+            "value": "********"
           }
         ],
         "waitBefore": "visible",
@@ -53,6 +78,14 @@
             "options": {
               "name": "Continuar"
             }
+          },
+          {
+            "type": "css",
+            "value": "button[type=\"submit\"]"
+          },
+          {
+            "type": "getByText",
+            "value": "Continuar"
           }
         ],
         "waitBefore": "enabled",

@@ -1,6 +1,10 @@
 // test-ai-mcp-service.ts
 // Prueba independiente del nuevo servicio AIWithMCPService
 
+// Cargar variables de entorno desde .env
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 import { AIWithMCPService } from './orchestrator/services/AIWithMCPService';
 import { getLlmService } from './orchestrator/llm-service';
 import * as fs from 'fs';
