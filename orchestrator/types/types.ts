@@ -37,8 +37,20 @@ export interface PageObjectDefinition {
  */
 export type TestAssertion =
   | { type: 'urlContains'; expected: string }
+  | { type: 'urlEquals'; expected: string }
+  | { type: 'titleContains'; expected: string }
+  | { type: 'titleEquals'; expected: string }
   | { type: 'textVisible'; expected: string }
   | { type: 'text'; expected: string }
+  | { type: 'elementVisible'; selector: string }
+  | { type: 'elementHidden'; selector: string }
+  | { type: 'elementEnabled'; selector: string }
+  | { type: 'elementDisabled'; selector: string }
+  | { type: 'elementContainsText'; selector: string; expected: string }
+  | { type: 'elementHasText'; selector: string; expected: string }
+  | { type: 'elementHasValue'; selector: string; expected: string }
+  | { type: 'elementHasAttribute'; selector: string; attribute: string; expected: string }
+  | { type: 'elementCount'; selector: string; expected: number }
   | { type: 'oneOf'; expectedOptions: string[] };
 
 /**

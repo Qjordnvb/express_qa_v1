@@ -1,21 +1,7 @@
 // scripts/generate-spec.ts
 import * as fs from 'fs';
 import * as path from 'path';
-// --- Definición de Interfaces ---
-interface TestStep {
-  page: string;
-  action: string;
-  params: unknown[];
-  waitFor?: {
-    element: string;
-    state: string;
-  };
-  assert?: {
-    type: string;
-    expected?: unknown;
-    expectedOptions?: unknown[];
-  };
-}
+import { TestStep, TestAssertion } from '../orchestrator/types/types';
 interface PageDefinition {
   className: string;
 }
@@ -133,6 +119,24 @@ const specSteps = testSteps.map((step, index) => {
  } else {
  stepCode += `await ${instanceName}.${methodName}(${paramsString});`;
  }
+
+ // Procesar waitFor si existe
+ if (step.waitFor && step.waitFor.element && step.waitFor.state) {
+   // Mapear estados al método correcto que existe en PageObject
+  const elementName = step.waitFor.element.charAt(0).toUpperCase() + step.waitFor.element.slice(1);
+  let methodSuffix = 'Visible'; // Por defecto usar Visible
+
+  if (step.waitFor.state === 'visible') {
+    methodSuffix = 'Visible';
+  } else if (step.waitFor.state === 'enabled') {
+    methodSuffix = 'Visible'; // enabled también usa waitForVisible ya que el click verifica enabled
+  } else if (step.waitFor.state === 'hidden') {
+    methodSuffix = 'Hidden';
+  }
+
+  stepCode += `\n    await ${instanceName}.waitFor${elementName}${methodSuffix}();`;
+ }
+
  if (step.assert) {
   switch (step.assert.type) {
     case 'textVisible':
@@ -147,6 +151,44 @@ const specSteps = testSteps.map((step, index) => {
       )} + '.*'));`;
       break;
     }
+    case 'urlEquals':
+      stepCode += `\n    await expect(page).toHaveURL(${JSON.stringify(step.assert.expected)});`;
+      break;
+    case 'titleContains':
+      stepCode += `\n    await expect(page).toHaveTitle(new RegExp('.*' + ${JSON.stringify(
+        step.assert.expected
+      )} + '.*'));`;
+      break;
+    case 'titleEquals':
+      stepCode += `\n    await expect(page).toHaveTitle(${JSON.stringify(step.assert.expected)});`;
+      break;
+    case 'elementVisible':
+      stepCode += `\n    await expect(page.locator(${JSON.stringify(step.assert.selector)})).toBeVisible();`;
+      break;
+    case 'elementHidden':
+      stepCode += `\n    await expect(page.locator(${JSON.stringify(step.assert.selector)})).toBeHidden();`;
+      break;
+    case 'elementEnabled':
+      stepCode += `\n    await expect(page.locator(${JSON.stringify(step.assert.selector)})).toBeEnabled();`;
+      break;
+    case 'elementDisabled':
+      stepCode += `\n    await expect(page.locator(${JSON.stringify(step.assert.selector)})).toBeDisabled();`;
+      break;
+    case 'elementContainsText':
+      stepCode += `\n    await expect(page.locator(${JSON.stringify(step.assert.selector)})).toContainText(${JSON.stringify(step.assert.expected)});`;
+      break;
+    case 'elementHasText':
+      stepCode += `\n    await expect(page.locator(${JSON.stringify(step.assert.selector)})).toHaveText(${JSON.stringify(step.assert.expected)});`;
+      break;
+    case 'elementHasValue':
+      stepCode += `\n    await expect(page.locator(${JSON.stringify(step.assert.selector)})).toHaveValue(${JSON.stringify(step.assert.expected)});`;
+      break;
+    case 'elementHasAttribute':
+      stepCode += `\n    await expect(page.locator(${JSON.stringify(step.assert.selector)})).toHaveAttribute(${JSON.stringify(step.assert.attribute)}, ${JSON.stringify(step.assert.expected)});`;
+      break;
+    case 'elementCount':
+      stepCode += `\n    await expect(page.locator(${JSON.stringify(step.assert.selector)})).toHaveCount(${step.assert.expected});`;
+      break;
     case 'oneOf': {
       const options = (step.assert.expectedOptions || [])
         .map(opt => JSON.stringify(opt))
