@@ -7,6 +7,7 @@ import {
 import { ILlmService, AIFailureAnalysis, AINavigationDecision } from './ILlmService';
 import { AIResponse } from '../types/types';
 import { MCPClientService } from '../services/McpClientService';
+import { MCPManager } from '../services/MCPManager';
 
 export class GoogleGeminiService implements ILlmService {
   private model: any;
@@ -19,7 +20,9 @@ export class GoogleGeminiService implements ILlmService {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    this.mcpClient = new MCPClientService();
+    // Usar MCPManager para instancia compartida
+    this.mcpClient = MCPManager.getInstance().getMCPClient();
+    console.log('✅ [GoogleGeminiService] Usando instancia MCP compartida (MCPManager)');
 
     this.model = genAI.getGenerativeModel({
       model: 'gemini-1.5-flash',

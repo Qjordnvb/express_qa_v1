@@ -1,12 +1,12 @@
 {
   "name": "Search and Filter Flow",
-  "path": "/index.php?route=common/login",
+  "path": "/index.php?route=account/login",
  "userStory": [
   "DADO que estoy en la página de login",
   "CUANDO ingreso mi email 'jordanvillarreal1994@gmail.com'",
   "Y ingreso mi password '12345678'",
   "Y hago clic en el botón 'Login'",
-  "ENTONCES debo ser redirigido a '/account'",
+  "ENTONCES debo ser redirigido a '/index.php?route=account/account'",
   "Y en la barra de busqueda busco 'Macbook'",
   "Y hago clic en el botón de búsqueda",
   "ENTONCES debo ver la lista de resultados de búsqueda",

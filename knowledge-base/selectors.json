@@ -5,9 +5,11 @@
     "workingSelectors": [
       "getByLabel:E-Mail Address"
     ],
-    "failedSelectors": [],
-    "lastUpdated": "2025-07-20T06:19:30.724Z",
-    "successRate": 100
+    "failedSelectors": [
+      "getByLabel:E-Mail Address"
+    ],
+    "lastUpdated": "2025-08-05T00:39:57.021Z",
+    "successRate": 50
   },
   "https://ecommerce-playground.lambdatest.io/index.php?route=account/login-passwordInput": {
     "url": "https://ecommerce-playground.lambdatest.io/index.php?route=account/login",
@@ -15,9 +17,11 @@
     "workingSelectors": [
       "getByLabel:Password"
     ],
-    "failedSelectors": [],
-    "lastUpdated": "2025-07-20T06:19:30.724Z",
-    "successRate": 100
+    "failedSelectors": [
+      "getByLabel:Password"
+    ],
+    "lastUpdated": "2025-08-05T00:39:57.021Z",
+    "successRate": 50
   },
   "https://ecommerce-playground.lambdatest.io/index.php?route=account/login-loginButton": {
     "url": "https://ecommerce-playground.lambdatest.io/index.php?route=account/login",
@@ -25,9 +29,11 @@
     "workingSelectors": [
       "getByRole:button{\"name\":\"Login\"}"
     ],
-    "failedSelectors": [],
-    "lastUpdated": "2025-07-20T06:19:30.724Z",
-    "successRate": 100
+    "failedSelectors": [
+      "getByRole:button{\"name\":\"Login\"}"
+    ],
+    "lastUpdated": "2025-08-05T00:39:57.021Z",
+    "successRate": 50
   },
   "https://ecommerce-playground.lambdatest.io/index.php?route=account/login-errorMessage": {
     "url": "https://ecommerce-playground.lambdatest.io/index.php?route=account/login",
@@ -166,6 +172,36 @@
       "getByRole:button{\"name\":\"Buscar con Google\"}"
     ],
     "lastUpdated": "2025-07-28T04:23:18.398Z",
+    "successRate": 0
+  },
+  "https://ecommerce-playground.lambdatest.io/index.php?route=account/login-searchInput": {
+    "url": "https://ecommerce-playground.lambdatest.io/index.php?route=account/login",
+    "elementDescription": "searchInput",
+    "workingSelectors": [],
+    "failedSelectors": [
+      "getByPlaceholder:Search For Products"
+    ],
+    "lastUpdated": "2025-08-05T00:39:57.021Z",
+    "successRate": 0
+  },
+  "https://ecommerce-playground.lambdatest.io/index.php?route=account/login-searchButton": {
+    "url": "https://ecommerce-playground.lambdatest.io/index.php?route=account/login",
+    "elementDescription": "searchButton",
+    "workingSelectors": [],
+    "failedSelectors": [
+      "getByRole:button{\"name\":\"SEARCH\"}"
+    ],
+    "lastUpdated": "2025-08-05T00:39:57.021Z",
+    "successRate": 0
+  },
+  "https://ecommerce-playground.lambdatest.io/index.php?route=account/login-inStockFilter": {
+    "url": "https://ecommerce-playground.lambdatest.io/index.php?route=account/login",
+    "elementDescription": "inStockFilter",
+    "workingSelectors": [],
+    "failedSelectors": [
+      "getByLabel:In Stock"
+    ],
+    "lastUpdated": "2025-08-05T00:39:57.021Z",
     "successRate": 0
   }
 }

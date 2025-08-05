@@ -197,6 +197,27 @@ export class BasePage {
   }
 
   /**
+   * Espera a que la URL contenga el texto especificado
+   */
+  async waitForUrl(expectedUrlPart: string, timeout: number = 15000): Promise<void> {
+    const startTime = Date.now();
+    
+    while (Date.now() - startTime < timeout) {
+      const currentUrl = this.page.url();
+      if (currentUrl.includes(expectedUrlPart)) {
+        console.log(`URL válida encontrada: ${currentUrl}`);
+        this.log('waitForUrl', { expectedUrlPart, currentUrl, success: true });
+        return;
+      }
+      await this.page.waitForTimeout(1000);
+    }
+    
+    const finalUrl = this.page.url();
+    this.log('waitForUrl', { expectedUrlPart, finalUrl, success: false });
+    throw new Error(`Timeout esperando URL con '${expectedUrlPart}'. URL actual: ${finalUrl}`);
+  }
+
+  /**
    * Valida que al menos un selector funcione para cada elemento dado
    */
   public static async validateAllSelectors(
