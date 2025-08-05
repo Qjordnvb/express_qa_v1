@@ -1,6 +1,6 @@
 {
   "pageObject": {
-    "className": "MembeerLoginPage",
+    "className": "EcommercePage",
     "locators": [
       {
         "name": "emailInput",
@@ -14,24 +14,8 @@
             "type": "getByRole",
             "value": "textbox",
             "options": {
-              "name": "Email"
+              "name": "E-Mail Address"
             }
-          },
-          {
-            "type": "css",
-            "value": "#email"
-          },
-          {
-            "type": "css",
-            "value": "input[type=\"email\"]"
-          },
-          {
-            "type": "css",
-            "value": "[name=\"email\"]"
-          },
-          {
-            "type": "getByPlaceholder",
-            "value": "mail@mail.com"
           }
         ],
         "waitBefore": "visible",
@@ -46,27 +30,18 @@
         ],
         "selectors": [
           {
-            "type": "css",
-            "value": "#password"
-          },
-          {
-            "type": "css",
-            "value": "input[type=\"password\"]"
-          },
-          {
-            "type": "css",
-            "value": "[name=\"password\"]"
-          },
-          {
-            "type": "getByPlaceholder",
-            "value": "********"
+            "type": "getByRole",
+            "value": "textbox",
+            "options": {
+              "name": "Password"
+            }
           }
         ],
         "waitBefore": "visible",
         "validateAfter": true
       },
       {
-        "name": "continuarButton",
+        "name": "loginButton",
         "elementType": "button",
         "actions": [
           "click"
@@ -76,49 +51,146 @@
             "type": "getByRole",
             "value": "button",
             "options": {
-              "name": "Continuar"
+              "name": "Login"
             }
-          },
-          {
-            "type": "css",
-            "value": "button[type=\"submit\"]"
-          },
-          {
-            "type": "getByText",
-            "value": "Continuar"
           }
         ],
         "waitBefore": "enabled",
         "validateAfter": true
+      },
+      {
+        "name": "searchInput",
+        "elementType": "input",
+        "actions": [
+          "fill",
+          "clear"
+        ],
+        "selectors": [
+          {
+            "type": "getByRole",
+            "value": "textbox",
+            "options": {
+              "name": "Search For Products"
+            }
+          }
+        ],
+        "waitBefore": "visible",
+        "validateAfter": true
+      },
+      {
+        "name": "searchButton",
+        "elementType": "button",
+        "actions": [
+          "click"
+        ],
+        "selectors": [
+          {
+            "type": "getByRole",
+            "value": "button",
+            "options": {
+              "name": "Search"
+            }
+          }
+        ],
+        "waitBefore": "enabled",
+        "validateAfter": true
+      },
+      {
+        "name": "inStockCheckbox",
+        "elementType": "checkbox",
+        "actions": [
+          "click"
+        ],
+        "selectors": [
+          {
+            "type": "getByRole",
+            "value": "checkbox",
+            "options": {
+              "name": "In stock"
+            }
+          }
+        ],
+        "waitBefore": "visible",
+        "validateAfter": true
+      },
+      {
+        "name": "searchResultsList",
+        "elementType": "list",
+        "actions": [
+          "observe"
+        ],
+        "selectors": [
+          {
+            "type": "getByRole",
+            "value": "list",
+            "options": {
+              "name": "- list  :"
+            }
+          }
+        ],
+        "waitBefore": "visible"
       }
     ]
   },
   "testSteps": [
     {
-      "page": "MembeerLoginPage",
+      "page": "EcommercePage",
       "action": "navigate",
-      "params": [
-        "/"
-      ]
+      "params": []
     },
     {
-      "page": "MembeerLoginPage",
+      "page": "EcommercePage",
       "action": "fillEmailInput",
       "params": [
-        "admin@serempre.com"
+        "jordanvillarreal1994@gmail.com"
       ]
     },
     {
-      "page": "MembeerLoginPage",
+      "page": "EcommercePage",
       "action": "fillPasswordInput",
       "params": [
-        "9nZ98£FQ6i,G"
+        "12345678"
       ]
     },
     {
-      "page": "MembeerLoginPage",
-      "action": "clickContinuarButton",
+      "page": "EcommercePage",
+      "action": "clickLoginButton",
       "params": []
+    },
+    {
+      "page": "EcommercePage",
+      "action": "fillSearchInput",
+      "params": [
+        "Macbook"
+      ]
+    },
+    {
+      "page": "EcommercePage",
+      "action": "clickSearchButton",
+      "params": []
+    },
+    {
+      "page": "EcommercePage",
+      "action": "assertSearchResultsListVisible",
+      "params": [],
+      "assert": {
+        "type": "textVisible",
+        "expected": "Macbook"
+      }
+    },
+    {
+      "page": "EcommercePage",
+      "action": "clickInStockCheckbox",
+      "params": []
+    },
+    {
+      "page": "EcommercePage",
+      "action": "assertSearchResultsListVisible",
+      "params": [],
+      "assert": {
+        "type": "textVisible",
+        "expected": "In stock"
+      }
     }
   ]
 }

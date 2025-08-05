@@ -2,6 +2,7 @@
 // Servicio que permite a la IA usar MCP como brazos para navegar e interactuar
 
 import { MCPClientService } from './McpClientService';
+import { MCPManager } from './MCPManager';
 import { ILlmService, AINavigationDecision } from '../llms/ILlmService';
 import { AIResponse, TestStep, PageObjectDefinition, LocatorDefinition } from '../types/types';
 
@@ -34,9 +35,23 @@ export class AIWithMCPService {
   private mcpClient: MCPClientService;
   private llmService: ILlmService;
 
-  constructor(llmService: ILlmService) {
-    this.mcpClient = new MCPClientService();
+  /**
+   * Constructor con dependency injection para MCPManager
+   * @param llmService - Servicio LLM para IA
+   * @param mcpClient - Instancia MCP compartida (opcional, usa MCPManager por defecto)
+   */
+  constructor(llmService: ILlmService, mcpClient?: MCPClientService) {
     this.llmService = llmService;
+    
+    if (mcpClient) {
+      // Usar instancia MCP inyectada (para shared singleton)
+      this.mcpClient = mcpClient;
+      console.log('✅ [AIWithMCPService] Usando instancia MCP compartida (inyectada)');
+    } else {
+      // Fallback: usar MCPManager singleton
+      this.mcpClient = MCPManager.getInstance().getMCPClient();
+      console.log('✅ [AIWithMCPService] Usando instancia MCP compartida (MCPManager)');
+    }
   }
 
   /**
@@ -66,8 +81,9 @@ export class AIWithMCPService {
 
   /**
    * LA IA EXPLORA LA HISTORIA DE USUARIO USANDO MCP COMO BRAZOS
+   * AHORA ES PÚBLICO PARA USO DESDE INDEX.TS
    */
-  private async exploreUserStoryWithMCP(
+  public async exploreUserStoryWithMCP(
     userStory: string[],
     baseUrl: string,
     testPath: string
@@ -75,9 +91,13 @@ export class AIWithMCPService {
 
     console.log('\n🧠 [AI-MCP] LA IA INICIARÁ EXPLORACIÓN CON MCP COMO BRAZOS...\n');
 
-    // 1. Iniciar servidor MCP
-    await this.mcpClient.startMCPServer();
-    console.log('🤖 [AI-MCP] MCP listo como brazos de la IA');
+    // 1. Verificar que MCP esté conectado (no iniciarlo de nuevo)
+    if (!this.mcpClient.isConnected()) {
+      console.log('⚠️ [AI-MCP] MCP no conectado, usando servidor compartido...');
+      // No iniciar nuevo servidor, usar el singleton compartido
+    } else {
+      console.log('🤖 [AI-MCP] MCP listo como brazos de la IA (usando instancia compartida)');
+    }
 
     const fullUrl = `${baseUrl}${testPath}`;
     const steps: MCPInteractionStep[] = [];
@@ -91,10 +111,17 @@ export class AIWithMCPService {
         action: 'navigate'
       };
 
-      await this.mcpClient.navigateToUrl(fullUrl);
-      await this.waitAndObserve(3000);
-
-      const initialContext = await this.mcpClient.getCompleteContext();
+      // Verificar si ya estamos en la página correcta (para evitar navegación duplicada)
+      let initialContext = await this.mcpClient.getCompleteContext();
+      
+      if (!initialContext.pageInfo?.url?.includes(testPath)) {
+        console.log(`🔄 [AI-MCP] Navegando a nueva URL: ${fullUrl}`);
+        await this.mcpClient.navigateToUrl(fullUrl);
+        await this.waitAndObserve(3000);
+        initialContext = await this.mcpClient.getCompleteContext();
+      } else {
+        console.log(`✅ [AI-MCP] Ya estamos en la página correcta: ${initialContext.pageInfo.url}`);
+      }
       navStep.result = {
         success: true,
         newUrl: initialContext.pageInfo.url,
@@ -164,7 +191,8 @@ export class AIWithMCPService {
       };
 
     } finally {
-      await this.mcpClient.stopMCPServer();
+      // No cerrar MCP - es compartido y manejado por MCPManager
+      console.log('🏁 [AI-MCP] Exploración completada (MCP sigue disponible para otros usos)');
     }
   }
 
@@ -353,27 +381,31 @@ Ejemplo 3 - Botón de acción:
 
       switch (decision.action) {
         case 'click':
-          if (decision.element) {
+          if (decision.element && decision.element.ref) {
             await mcpClient.callTool({
               name: 'browser_click',
               arguments: {
-                element: decision.element.name,
+                element: decision.element.name || 'unknown',
                 ref: decision.element.ref.toString()
               }
             });
+          } else {
+            console.warn('⚠️ [AI-MCP] Click: elemento o ref faltante');
           }
           break;
 
         case 'type':
-          if (decision.element && decision.params && decision.params[0]) {
+          if (decision.element && decision.element.ref && decision.params && decision.params[0]) {
             await mcpClient.callTool({
               name: 'browser_type',
               arguments: {
-                element: decision.element.name,
+                element: decision.element.name || 'unknown',
                 ref: decision.element.ref.toString(),
                 text: decision.params[0]
               }
             });
+          } else {
+            console.warn('⚠️ [AI-MCP] Type: elemento, ref o parámetros faltantes');
           }
           break;
 
@@ -444,28 +476,24 @@ Ejemplo 3 - Botón de acción:
 
   /**
    * GENERA SELECTORES BASADOS EN LA EXPERIENCIA REAL
+   * ✅ AHORA REUTILIZA LA LÓGICA AVANZADA DE McpClientService
    */
   private async generateSelectorsFromExperience(steps: MCPInteractionStep[]): Promise<any[]> {
     const selectors: any[] = [];
 
     for (const step of steps) {
       if (step.element && step.result?.success) {
-        // Generar múltiples selectores para el elemento que funcionó
+        // ✅ REUTILIZAR la lógica avanzada de McpClientService.generatePlaywrightSelectors()
+        // Esto nos da 5 selectores priorizados con reasoning automáticamente
+        const advancedSelectors = (this.mcpClient as any).generatePlaywrightSelectors(step.element);
+        
         const elementSelectors = {
-          name: step.element.name.replace(/\s+/g, ''),
-          elementType: step.element.role,
+          name: step.element.name ? step.element.name.replace(/\s+/g, '') : 'unknownElement',
+          elementType: step.element.role || 'button',
           actions: [step.action],
-          selectors: [
-            {
-              type: "getByRole",
-              value: step.element.role,
-              options: step.element.name ? { name: step.element.name } : undefined
-            },
-            {
-              type: "css",
-              value: `[role="${step.element.role}"]`
-            }
-          ]
+          selectors: advancedSelectors, // ✅ Usar selectores avanzados con priority y reason
+          // ✅ NO hardcodear waitBefore - McpClientService ya lo maneja inteligentemente
+          validateAfter: step.action === 'click' || step.action === 'type'
         };
 
         selectors.push(elementSelectors);
@@ -474,6 +502,10 @@ Ejemplo 3 - Botón de acción:
 
     return selectors;
   }
+
+  // ❌ FUNCIÓN ELIMINADA: determineWaitStrategy
+  // No es necesaria - McpClientService.generatePlaywrightSelectors() ya maneja 
+  // las estrategias de espera inteligentemente sin hardcodeo
 
   /**
    * EXTRAE APRENDIZAJES DE LA EXPLORACIÓN
@@ -494,8 +526,9 @@ Ejemplo 3 - Botón de acción:
 
   /**
    * CONVIERTE LA EXPERIENCIA MCP AL JSON EXACTO QUE ESPERAN LOS GENERADORES
+   * AHORA ES PÚBLICO PARA USO DESDE INDEX.TS
    */
-  private async generateFinalAIResponse(
+  public async generateFinalAIResponse(
     explorationResult: AIExplorationResult,
     originalUserStory: string[]
   ): Promise<AIResponse> {
@@ -531,6 +564,70 @@ Analiza la EXPLORACIÓN REAL MCP y la HISTORIA DE USUARIO. Basado en ellos, gene
      - "selectors": Array de objetos con "type", "value" y opcionalmente "options"
      - "waitBefore": (OPCIONAL) Estado a esperar antes de interactuar ("visible", "enabled", "stable")
      - "validateAfter": (OPCIONAL) Boolean indicando si validar después de la acción
+
+🚨 REGLAS CRÍTICAS PARA SELECTORES CON PRIORIDAD Y REASONING:
+===================================================================
+
+**OBLIGATORIO:** Cada elemento en "locators" DEBE tener EXACTAMENTE 5 selectores.
+**OBLIGATORIO:** Cada selector DEBE incluir los campos: "type", "value", "priority", "reason"
+**OBLIGATORIO:** Si el selector tiene opciones, incluir campo "options"
+
+**ESTRUCTURA EXACTA REQUERIDA:**
+"selectors": [
+  {"type": "getByRole", "value": "button", "options": {"name": "Login"}, "priority": 1, "reason": "Most robust - role with accessible name"},
+  {"type": "getByLabel", "value": "Email", "priority": 2, "reason": "High reliability - associated label"},
+  {"type": "getByRole", "value": "textbox", "priority": 3, "reason": "Medium reliability - semantic role"},
+  {"type": "getByTestId", "value": "email-input", "priority": 4, "reason": "Good fallback - test identifier"},
+  {"type": "locator", "value": "input[type='email']", "priority": 5, "reason": "Last resort - CSS selector"}
+]
+
+**TIPOS DE SELECTORES VÁLIDOS PLAYWRIGHT:**
+- "locator" (CSS selectors y XPath)
+- "getByRole" (roles ARIA estándar)
+- "getByText" (texto visible)
+- "getByLabel" (labels asociados)
+- "getByPlaceholder" (placeholder text)
+- "getByTestId" (data-testid attributes)
+- "getByTitle" (title attribute)
+- "getByAltText" (alt text para imágenes)
+
+**ORDEN DE PRIORIDAD EXACTO (SIGUIENDO DOCUMENTACIÓN PLAYWRIGHT):**
+
+**PRIORIDAD 1:** MÁS ROBUSTO - Localizadores user-facing
+- Role con name: {"type": "getByRole", "value": "button", "options": {"name": "Login"}, "priority": 1, "reason": "Most robust - role with accessible name"}
+- Label asociado: {"type": "getByLabel", "value": "Email Address", "priority": 1, "reason": "Most robust - associated label"}
+
+**PRIORIDAD 2:** ALTA CONFIABILIDAD - Atributos user-facing
+- TestId: {"type": "getByTestId", "value": "submit-button", "priority": 2, "reason": "High reliability - dedicated test identifier"}
+- Placeholder específico: {"type": "getByPlaceholder", "value": "Enter your email", "priority": 2, "reason": "High reliability - placeholder text"}
+
+**PRIORIDAD 3:** CONFIABILIDAD MEDIA - Roles y texto visible
+- Role sin name: {"type": "getByRole", "value": "textbox", "priority": 3, "reason": "Medium reliability - semantic role"}
+- Texto visible: {"type": "getByText", "value": "Login", "priority": 3, "reason": "Medium reliability - visible text"}
+
+**PRIORIDAD 4:** ALTERNATIVA - Atributos adicionales
+- Title: {"type": "getByTitle", "value": "Submit form", "priority": 4, "reason": "Lower reliability - title attribute"}
+- Alt text: {"type": "getByAltText", "value": "Submit", "priority": 4, "reason": "Lower reliability - alt text"}
+
+**PRIORIDAD 5:** ÚLTIMO RECURSO - CSS/XPath locators
+- CSS ID: {"type": "locator", "value": "#elementId", "priority": 5, "reason": "Last resort - CSS selector"}
+- XPath: {"type": "locator", "value": "//input[@type='email']", "priority": 5, "reason": "Last resort - XPath selector"}
+
+**EJEMPLO COMPLETO DE ELEMENTO CON 5 SELECTORES PRIORIZADOS:**
+{
+  "name": "emailInput",
+  "elementType": "input",
+  "actions": ["fill", "clear"],
+  "selectors": [
+    {"type": "getByLabel", "value": "E-Mail Address", "priority": 1, "reason": "Most robust - associated label"},
+    {"type": "getByPlaceholder", "value": "Enter your email", "priority": 2, "reason": "High reliability - placeholder text"},
+    {"type": "getByRole", "value": "textbox", "priority": 3, "reason": "Medium reliability - semantic role"},
+    {"type": "getByTestId", "value": "email-input", "priority": 4, "reason": "Lower reliability - test identifier"},
+    {"type": "locator", "value": "input[name='email'][type='email']", "priority": 5, "reason": "Last resort - CSS selector"}
+  ],
+  "waitBefore": "visible",
+  "validateAfter": true
+}
 
 2. **testSteps**: Un Array de objetos que describe CADA PASO del flujo completo:
 

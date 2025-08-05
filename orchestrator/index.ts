@@ -4,16 +4,18 @@ import * as path from 'path';
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 import * as fs from 'fs';
 import { execSync, spawn } from 'child_process';  // ← AÑADIR spawn aquí
-import { chromium, Page, Browser } from '@playwright/test';
+import { chromium } from '@playwright/test';
 import { getLlmService } from './llm-service';
 import { ILlmService } from './llms/ILlmService';
 import { LearningSystem } from './learning-system';
-import { FailureAnalyzer, FailureAnalysis } from './failure-analyzer';
+import { FailureAnalyzer } from './failure-analyzer';
 import { UIPatternDetector, DetectedPattern } from './ui-pattern-detector';
 import playwrightConfig from '../playwright.config';
 import { AIResponse } from './types/types';
 import { MemoryService } from './services/MemoryService';
 import { ContextService, RealTimeContext } from './services/ContextService';
+import { MCPManager } from './services/MCPManager';
+import { AIWithMCPService } from './services/AIWithMCPService';
 
 
 interface TestCase {
@@ -26,61 +28,69 @@ interface TestCase {
  * EXTRAÍDO DE AIWithMCPService: Explora usando IA inteligente + MCP como brazos
  * Sin hardcodeo - la IA decide todo inteligentemente
  */
+// ❌ FUNCIÓN LEGACY - Reemplazada por AIWithMCPService
+/*
 async function exploreUserStoryWithIntelligentAI(
   contextService: ContextService,
   llmService: ILlmService,
+  sharedMcpClient: any,
   userStory: string[],
   baseUrl: string,
   testPath: string
 ): Promise<RealTimeContext | null> {
-  
+
   console.log('[LOG] 🧠 EXPLORACIÓN INTELIGENTE: IA analizará cada paso y decidirá exploración real...');
-  
+
   try {
     const fullUrl = `${baseUrl}${testPath}`;
-    
-    // ✅ USAR EL CONTEXTO YA NAVEGADO del análisis estático
-    let currentContext = await contextService.getRealTimeContext(fullUrl);
-    if (!currentContext) {
-      console.warn('[LOG] ⚠️ No se pudo obtener contexto para exploración inteligente');
+
+    if (!sharedMcpClient) {
+      console.warn('[LOG] ⚠️ MCP Client compartido no disponible para exploración inteligente');
       return null;
     }
+
+    // 1. Navegar a la página inicial usando MCP compartido
+    await sharedMcpClient.navigateToUrl(fullUrl);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    let currentContext = await sharedMcpClient.getCompleteContext();
     console.log(`[LOG] ✅ Contexto inicial: ${currentContext.interactiveElements?.length || 0} elementos`);
 
     // 2. IA analiza cada paso y decide si requiere exploración real
     for (let i = 1; i < userStory.length; i++) {
       const userStep = userStory[i];
       console.log(`[LOG] 🤔 IA analizando paso ${i + 1}: "${userStep}"`);
-      
+
       // ✅ IA DECIDE INTELIGENTEMENTE si este paso requiere exploración real
       const aiDecision = await askAIForExplorationDecision(
-        llmService, 
-        userStep, 
-        currentContext, 
+        llmService,
+        userStep,
+        currentContext,
         userStory.slice(i + 1) // Pasos futuros para contexto
       );
-      
+
       if (aiDecision.requiresRealExploration) {
         console.log(`[LOG] 🎯 IA decidió: "${aiDecision.reasoning}"`);
         console.log(`[LOG] 🚀 Ejecutando exploración real...`);
-        
-        // ✅ IA EJECUTA LA ACCIÓN que decidió
-        const actionResult = await executeAIDecision(contextService, aiDecision, currentContext);
-        
+
+        // ❌ LEGACY: IA EJECUTA LA ACCIÓN que decidió (comentado - usa AIWithMCPService ahora)
+        // const actionResult = await executeAIDecision(sharedMcpClient, aiDecision, currentContext);
+        const actionResult = { executed: false }; // Placeholder hasta migración completa
+
         if (actionResult.executed) {
           // ✅ CAPTURA INMEDIATA POST-ACCIÓN (200ms para elementos dinámicos)
           console.log('[LOG] ⚡ Capturando elementos dinámicos post-acción...');
           await new Promise(resolve => setTimeout(resolve, 200));
-          
-          const postActionContext = await contextService.getRealTimeContext(fullUrl);
+
+          const postActionContext = await sharedMcpClient.getCompleteContext();
           console.log(`[LOG] 🎉 Post-acción: ${postActionContext.interactiveElements?.length || 0} elementos detectados`);
-          
+
           // Comparar contextos para detectar elementos nuevos
           const newElements = postActionContext.interactiveElements?.length - currentContext.interactiveElements?.length;
           if (newElements > 0) {
             console.log(`[LOG] ⚡ ${newElements} elementos dinámicos nuevos detectados!`);
           }
-          
+
           // Actualizar contexto para siguientes pasos
           currentContext = postActionContext;
         }
@@ -88,7 +98,7 @@ async function exploreUserStoryWithIntelligentAI(
         console.log(`[LOG] 🤖 IA decidió NO explorar: "${aiDecision.reasoning}"`);
       }
     }
-    
+
     // Retornar contexto final enriquecido con datos seguros
     return {
       ...currentContext,
@@ -99,23 +109,25 @@ async function exploreUserStoryWithIntelligentAI(
         userAgent: currentContext.playwrightContext?.userAgent || 'Mozilla/5.0 (intelligent-exploration)'
       }
     };
-    
+
   } catch (error) {
     console.warn('[LOG] ⚠️ Error en exploración inteligente:', error);
     return null;
   }
 }
+*/
 
 /**
- * IA INTELIGENTE: Decide si un paso requiere exploración real
+ * ❌ FUNCIÓN LEGACY - Reemplazada por AIWithMCPService.askAIWhatToDo()
  */
+/*
 async function askAIForExplorationDecision(
   llmService: ILlmService,
   userStep: string,
   currentContext: any,
   futureSteps: string[]
 ): Promise<{requiresRealExploration: boolean, reasoning: string, actionType?: string, targetElement?: any}> {
-  
+
   const prompt = `
 Eres una IA experta en análisis de historias de usuario para automatización de pruebas web.
 
@@ -153,13 +165,13 @@ FORMATO DE RESPUESTA (JSON válido):
 
 EJEMPLOS:
 - Paso: "Hago clic en Continuar" + Futuro: "Entonces veo mensaje de error" → SÍ explorar
-- Paso: "Ingreso email admin@test.com" + Futuro: "Ingreso contraseña" → NO explorar  
+- Paso: "Ingreso email admin@test.com" + Futuro: "Ingreso contraseña" → NO explorar
 - Paso: "Hago clic en Buscar" + Futuro: "Entonces veo resultados" → SÍ explorar
 `;
 
   try {
     const response = await llmService.getNavigationDecisionFromIA(prompt);
-    
+
     if (response && typeof response === 'object') {
       return {
         requiresRealExploration: response.requiresRealExploration || false,
@@ -168,12 +180,12 @@ EJEMPLOS:
         targetElement: response.targetElement
       };
     }
-    
+
     return {
       requiresRealExploration: false,
       reasoning: 'No se pudo obtener decisión de IA'
     };
-    
+
   } catch (error) {
     console.warn('[LOG] ⚠️ Error obteniendo decisión de IA:', error);
     return {
@@ -182,56 +194,42 @@ EJEMPLOS:
     };
   }
 }
+*/
 
 /**
- * Ejecuta la decisión de IA usando MCP via ContextService
+ * NUEVA FUNCIÓN: Decide si usar exploración inteligente IA+MCP o análisis estático
+ * Criterios: complejidad de la historia, elementos dinámicos esperados, etc.
  */
-async function executeAIDecision(
-  contextService: any,
-  aiDecision: any,
-  context: any
-): Promise<{executed: boolean, type?: string}> {
+async function decideExplorationStrategy(testCase: TestCase, mcpContext: RealTimeContext | null): Promise<boolean> {
+  const userStoryText = testCase.userStory.join(' ').toLowerCase();
   
-  try {
-    if (aiDecision.actionType === 'click' || aiDecision.actionType === 'submit') {
-      // Buscar el elemento target usando IA inteligente
-      const buttons = context.interactiveElements?.filter((el: any) => 
-        el.role === 'button' || el.elementType === 'button' || el.htmlAttributes?.type === 'submit'
-      ) || [];
-      
-      if (buttons.length > 0) {
-        // Usar el primer botón de submit o el más probable
-        const targetButton = buttons.find((btn: any) => 
-          btn.htmlAttributes?.type === 'submit' ||
-          btn.name?.toLowerCase().includes('continuar') ||
-          btn.name?.toLowerCase().includes('submit')
-        ) || buttons[0];
-        
-        console.log(`[LOG] 🎯 Ejecutando ${aiDecision.actionType} en: ${targetButton.name || 'elemento detectado'}`);
-        
-        // Ejecutar acción real usando el mcpClient del contextService
-        const mcpClient = (contextService as any).mcpClient?.mcpClient;
-        if (mcpClient) {
-          await mcpClient.callTool({
-            name: 'browser_click',
-            arguments: {
-              element: targetButton.name || '',
-              ref: targetButton.ref?.toString() || ''
-            }
-          });
-          
-          return { executed: true, type: aiDecision.actionType };
-        }
-      }
-    }
-    
-    return { executed: false };
-    
-  } catch (error) {
-    console.warn('[LOG] ⚠️ Error ejecutando decisión de IA:', error);
-    return { executed: false };
+  // ✅ USAR IA+MCP SI:
+  const hasComplexInteractions = userStoryText.includes('login') || 
+                                 userStoryText.includes('submit') || 
+                                 userStoryText.includes('search') ||
+                                 userStoryText.includes('click') ||
+                                 userStoryText.includes('entonces');
+  
+  const hasMultipleSteps = testCase.userStory.length > 2;
+  
+  const hasLimitedStaticContext = !mcpContext || mcpContext.interactiveElements.length < 5;
+  
+  // Criterios para IA+MCP
+  if (hasComplexInteractions && hasMultipleSteps) {
+    console.log('[LOG] 🎯 Detectadas interacciones complejas - requiere exploración IA+MCP');
+    return true;
   }
+  
+  if (hasLimitedStaticContext) {
+    console.log('[LOG] 🔍 Contexto estático limitado - usando IA+MCP para mejor análisis');
+    return true;
+  }
+  
+  console.log('[LOG] 📊 Historia simple - análisis estático suficiente');
+  return false;
 }
+
+// ✅ executeAIDecision eliminada - reemplazada por AIWithMCPService (arquitectura inteligente)
 
 
 
@@ -306,6 +304,43 @@ Si detectas elementos con estas características, son mensajes dinámicos (toast
 - GENERAR: {"type": "getByRole", "value": "textbox", "options": {"name": "Email address"}}
 - MCP detecta: {"role": "alert", "name": "", "className": "Toastify__toast"}
 - GENERAR: {"type": "getByRole", "value": "alert"} + fallbacks CSS
+
+🧭 **NAVEGACIÓN Y VALIDACIÓN DE URLS CRÍTICA:**
+
+**REGLA FUNDAMENTAL:** Cuando la historia de usuario mencione redirecciones (ENTONCES debo ser redirigido a...), DEBES generar validación de URL ANTES de continuar con acciones posteriores.
+
+**PATRÓN OBLIGATORIO PARA REDIRECTS:**
+Si la HU dice: "Y hago clic en 'Login'" seguido de "ENTONCES debo ser redirigido a '/account/account'"
+DEBES generar dos pasos separados:
+
+1. **Paso de acción:**
+   {
+     "page": "LoginPage", 
+     "action": "clickLoginButton",
+     "assert": {"type": "urlContains", "expected": "account/account"}
+   }
+
+2. **Paso de validación de navegación (CRÍTICO):**
+   {
+     "page": "LoginPage",
+     "action": "waitForUrl", 
+     "params": ["account/account"],
+     "assert": {"type": "urlContains", "expected": "account/account"}
+   }
+
+**POR QUÉ ES CRÍTICO:** Los redirects toman tiempo. Sin validación explícita, las acciones siguientes fallan porque intentan ejecutarse en la página incorrecta.
+
+**CUÁNDO APLICAR:**
+- Después de login/logout
+- Después de enviar formularios 
+- Después de acciones que cambian de página
+- Cuando la HU menciona explícitamente "ser redirigido a..."
+
+**EJEMPLO COMPLETO DE FLUJO CON REDIRECT:**
+Paso 1: {"page": "LoginPage", "action": "fillEmail", "params": ["user@email.com"]}
+Paso 2: {"page": "LoginPage", "action": "fillPassword", "params": ["pass123"]}  
+Paso 3: {"page": "LoginPage", "action": "clickLogin", "assert": {"type": "urlContains", "expected": "account/account"}}
+Paso 4: {"page": "AccountPage", "action": "fillSearchInput", "params": ["MacBook"]}
 
 ` : '**ANÁLISIS MCP:** No disponible - usando solo análisis visual y patrones detectados.\n';
 
@@ -461,7 +496,7 @@ Si detectas elementos con estas características, son mensajes dinámicos (toast
      "waitFor": { "element": "errorMessage", "state": "visible" }
    },
    {
-     "action": "assertErrorMessageText", 
+     "action": "assertErrorMessageText",
      "params": ["Las credenciales son incorrectas"],
      "assert": { "type": "textVisible", "expected": "Las credenciales son incorrectas" }
    }
@@ -692,32 +727,78 @@ EJEMPLO CON MÚLTIPLES OPCIONES:
    ]
    Y NO en el Page Object de la página inicial.
 
-   REGLAS ADICIONALES PARA SELECTORES:
-   - Para cada elemento en "locators", genera al menos 3 selectores de diferentes tipos. Prioriza en este orden:
-     1. getByRole (con "name" si es posible)
-     2. getByLabel
-     3. getByPlaceholder
-     4. css
-     5. xpath
-     6. getByText (solo para elementos de texto)
-   - Si el elemento tiene un atributo id o name, incluye un selector css o locator usando ese atributo.
-   - No inventes selectores: solo genera selectores que puedan existir razonablemente según la imagen, el contexto y el tipo de elemento.
-   - Si tienes acceso al HTML (o fragmento relevante), prioriza selectores que realmente existan en el DOM.
-   - Si el elemento no tiene un label visible, omite getByLabel y prioriza otros tipos.
-   - No repitas el mismo tipo de selector con valores diferentes; cada tipo debe ser único.
-   - El objetivo es maximizar la resiliencia: si un selector falla, los otros deben funcionar.
-
-   EJEMPLO DE LOCATORS PARA UN INPUT:
+   🚨 REGLAS CRÍTICAS PARA SELECTORES CON PRIORIDAD Y REASONING:
+   ===================================================================
+   
+   **OBLIGATORIO:** Cada elemento en "locators" DEBE tener EXACTAMENTE 5 selectores.
+   **OBLIGATORIO:** Cada selector DEBE incluir los campos: "type", "value", "priority", "reason"
+   **OBLIGATORIO:** Si el selector tiene opciones, incluir campo "options"
+   
+   **ESTRUCTURA EXACTA REQUERIDA:**
+   "selectors": [
+     {"type": "css", "value": "#elementId", "priority": 1, "reason": "Most reliable - unique ID"},
+     {"type": "getByLabel", "value": "Email", "priority": 2, "reason": "High reliability - associated label"},
+     {"type": "getByRole", "value": "textbox", "priority": 3, "reason": "Medium reliability - semantic role"},
+     {"type": "css", "value": "input[type='email']", "priority": 4, "reason": "Good fallback - type attribute"},
+     {"type": "xpath", "value": "//input[@placeholder='Email']", "priority": 5, "reason": "Last resort - XPath selector"}
+   ]
+   
+   **TIPOS DE SELECTORES VÁLIDOS PLAYWRIGHT:**
+   - "locator" (CSS selectors y XPath)
+   - "getByRole" (roles ARIA estándar)
+   - "getByText" (texto visible)
+   - "getByLabel" (labels asociados)
+   - "getByPlaceholder" (placeholder text)
+   - "getByTestId" (data-testid attributes)
+   - "getByTitle" (title attribute)
+   - "getByAltText" (alt text para imágenes)
+   
+   **ORDEN DE PRIORIDAD EXACTO (SIGUIENDO DOCUMENTACIÓN PLAYWRIGHT):**
+   
+   **PRIORIDAD 1:** MÁS ROBUSTO - Localizadores user-facing
+   - Role con name: {"type": "getByRole", "value": "button", "options": {"name": "Login"}, "priority": 1, "reason": "Most robust - role with accessible name"}
+   - Label asociado: {"type": "getByLabel", "value": "Email Address", "priority": 1, "reason": "Most robust - associated label"}
+   
+   **PRIORIDAD 2:** ALTA CONFIABILIDAD - Atributos user-facing
+   - TestId: {"type": "getByTestId", "value": "submit-button", "priority": 2, "reason": "High reliability - dedicated test identifier"}
+   - Placeholder específico: {"type": "getByPlaceholder", "value": "Enter your email", "priority": 2, "reason": "High reliability - placeholder text"}
+   
+   **PRIORIDAD 3:** CONFIABILIDAD MEDIA - Roles y texto visible
+   - Role sin name: {"type": "getByRole", "value": "textbox", "priority": 3, "reason": "Medium reliability - semantic role"}
+   - Texto visible: {"type": "getByText", "value": "Login", "priority": 3, "reason": "Medium reliability - visible text"}
+   
+   **PRIORIDAD 4:** ALTERNATIVA - Atributos adicionales
+   - Title: {"type": "getByTitle", "value": "Submit form", "priority": 4, "reason": "Lower reliability - title attribute"}
+   - Alt text: {"type": "getByAltText", "value": "Submit", "priority": 4, "reason": "Lower reliability - alt text"}
+   
+   **PRIORIDAD 5:** ÚLTIMO RECURSO - CSS/XPath locators
+   - CSS ID: {"type": "locator", "value": "#elementId", "priority": 5, "reason": "Last resort - CSS selector"}
+   - XPath: {"type": "locator", "value": "//input[@type='email']", "priority": 5, "reason": "Last resort - XPath selector"}
+   
+   **EJEMPLO COMPLETO DE ELEMENTO CON 5 SELECTORES PRIORIZADOS:**
    {
-     "name": "searchInput",
+     "name": "emailInput",
      "elementType": "input",
-     "actions": ["fill"],
+     "actions": ["fill", "clear"],
      "selectors": [
-       { "type": "getByRole", "value": "textbox", "options": { "name": "Search" } },
-       { "type": "getByPlaceholder", "value": "Search" },
-       { "type": "css", "value": "input[name='search']" }
-     ]
+       {"type": "getByLabel", "value": "E-Mail Address", "priority": 1, "reason": "Most robust - associated label"},
+       {"type": "getByPlaceholder", "value": "Enter your email", "priority": 2, "reason": "High reliability - placeholder text"},
+       {"type": "getByRole", "value": "textbox", "priority": 3, "reason": "Medium reliability - semantic role"},
+       {"type": "getByTestId", "value": "email-input", "priority": 4, "reason": "Lower reliability - test identifier"},
+       {"type": "locator", "value": "input[name='email'][type='email']", "priority": 5, "reason": "Last resort - CSS selector"}
+     ],
+     "waitBefore": "visible",
+     "validateAfter": true
    }
+   
+   **REGLAS CRÍTICAS PARA GENERACIÓN:**
+   - OBLIGATORIO: Analiza el contexto MCP para extraer atributos HTML reales (id, name, type, placeholder, class)
+   - OBLIGATORIO: Genera EXACTAMENTE 5 selectores por elemento, priorizados del 1 al 5
+   - OBLIGATORIO: Incluye "priority" y "reason" en cada selector
+   - NO repitas tipos de selectores; cada uno debe ser único y estratégico
+   - USA datos reales del análisis MCP, no valores genéricos
+   - Si un elemento no tiene suficientes atributos, combina estrategias inteligentemente
+   - PRIORIZA selectores que funcionen en múltiples navegadores y dispositivos
   `;
 }
 
@@ -725,7 +806,8 @@ async function getOrGenerateAssets(
   testCase: TestCase,
   fullDefinitionPath: string,
   llmService: ILlmService,
-  contextService: ContextService // ✅ PARÁMETRO AÑADIDO
+  contextService: ContextService,
+  sharedMcpClient: any // ✅ PARÁMETRO MCP AÑADIDO
 ): Promise<AIResponse> {
   if (fs.existsSync(fullDefinitionPath)) {
     console.log(`[LOG] ℹ️ Usando archivo de assets existente: ${path.basename(fullDefinitionPath)}`);
@@ -751,32 +833,63 @@ async function getOrGenerateAssets(
     console.warn('[LOG] ⚠️ MCP análisis estático falló, continuando con método tradicional:', error);
   }
 
-  // ========== 2. EXPLORACIÓN INTELIGENTE CON IA + MCP (OPCIONAL) ==========
-  console.log('[LOG] 🧠 Iniciando exploración inteligente IA + MCP...');
-  
-  try {
-    // ✅ IA EXPLORA INTELIGENTEMENTE usando MCP como brazos
-    const intelligentContext = await exploreUserStoryWithIntelligentAI(
-      contextService,
-      llmService,
-      testCase.userStory,
-      playwrightConfig.use?.baseURL || 'http://localhost',
-      testCase.path
-    );
+  // ========== 2. DECISIÓN INTELIGENTE: ¿EXPLORACIÓN IA+MCP O ANÁLISIS ESTÁTICO? ==========
+  console.log('[LOG] 🧠 Decidiendo estrategia: IA+MCP vs Análisis Estático...');
+
+  let aiResponse: AIResponse | null = null;
+  const shouldUseIntelligentExploration = await decideExplorationStrategy(testCase, mcpContext);
+
+  if (shouldUseIntelligentExploration) {
+    console.log('[LOG] 🚀 ESTRATEGIA ELEGIDA: Exploración Inteligente IA+MCP');
     
-    if (intelligentContext?.hasRealExperience) {
-      console.log(`[LOG] ✅ Exploración inteligente completada: experiencia real capturada`);
-      console.log(`[LOG] 🎯 Elementos post-exploración: ${intelligentContext.interactiveElements?.length || 0}`);
-      
-      // ✅ USAR EL CONTEXTO ENRIQUECIDO EN LUGAR DEL ESTÁTICO
-      mcpContext = intelligentContext;
-    } else {
-      console.log('[LOG] 🤖 IA decidió usar solo análisis estático');
+    try {
+      // ✅ USAR MÉTODOS DE AIWithMCPService DESDE INDEX.TS
+      const aiWithMCP = new AIWithMCPService(llmService, sharedMcpClient);
+
+      console.log('[LOG] 🤖 Paso 1: IA explorará con MCP como brazos robóticos...');
+      const explorationResult = await aiWithMCP.exploreUserStoryWithMCP(
+        testCase.userStory,
+        playwrightConfig.use?.baseURL || 'http://localhost',
+        testCase.path
+      );
+
+      console.log('[LOG] 🧠 Paso 2: IA convertirá experiencia a assets perfectos...');
+      aiResponse = await aiWithMCP.generateFinalAIResponse(explorationResult, testCase.userStory);
+
+      if (aiResponse) {
+        console.log('[LOG] ✅ EXPLORACIÓN INTELIGENTE EXITOSA!');
+        console.log(`[LOG] 🎯 PageObject: ${aiResponse.pageObject.className}`);
+        console.log(`[LOG] 🎯 Locators: ${aiResponse.pageObject.locators.length}`);
+        console.log(`[LOG] 🎯 TestSteps: ${aiResponse.testSteps.length}`);
+      }
+    } catch (error) {
+      console.warn('[LOG] ⚠️ Exploración inteligente falló, usando análisis estático:', error);
+      aiResponse = null;
     }
-  } catch (error) {
-    console.warn('[LOG] ⚠️ Exploración inteligente falló, usando contexto estático:', error);
+  } else {
+    console.log('[LOG] 🔍 ESTRATEGIA ELEGIDA: Análisis Estático (suficiente para este caso)');
   }
-  
+
+  // ========== 3. FALLBACK: ANÁLISIS ESTÁTICO SI IA+MCP FALLÓ ==========
+  if (!aiResponse) {
+    console.log('[LOG] 📊 Continuando con análisis estático tradicional...');
+    // El resto del flujo tradicional continúa aquí...
+  } else {
+    // ========== 4. GENERACIÓN DE CÓDIGO CON ASSETS PERFECTOS ==========
+    console.log('[LOG] 🏗️ Generando código con assets de IA+MCP...');
+    
+    const aiAssetsPath = fullDefinitionPath;
+    fs.writeFileSync(aiAssetsPath, JSON.stringify(aiResponse, null, 2));
+    console.log(`[LOG] ✅ Assets guardados: ${aiAssetsPath}`);
+
+    // Generar POM y Specs usando los mismos comandos npm que el flujo original
+    execSync(`npm run generate:pom -- "${aiAssetsPath}"`, { stdio: 'inherit' });
+    execSync(`npm run generate:spec -- "${aiAssetsPath}" "${process.argv[2]}"`, { stdio: 'inherit' });
+
+    console.log('[LOG] 🎉 GENERACIÓN COMPLETA CON IA + MCP EXITOSA');
+    return aiResponse;
+  }
+
   console.log('[LOG] ✅ Continuando con generación de assets...');
 
   // Captura de pantalla tradicional (mantener como respaldo)
@@ -841,9 +954,14 @@ async function getOrGenerateAssets(
 async function main() {
   console.log('🚀 Iniciando orquestador v12.0 (MCP Híper-Inteligente)...');
 
+  // Inicializar MCPManager singleton para instancia compartida
+  const mcpManager = MCPManager.getInstance();
+  const sharedMcpClient = mcpManager.getMCPClient();
+  console.log('✅ [Orchestrator] MCPManager singleton inicializado');
+
   const learningSystem = new LearningSystem();
   const llmService = getLlmService();
-  const contextService = new ContextService();
+  const contextService = new ContextService(sharedMcpClient);
 
   // NUEVO: Manejo de señales para limpieza garantizada
   process.on('SIGINT', async () => {
@@ -894,7 +1012,6 @@ async function main() {
 
   let attempt = 0;
   const maxRetries = 1;
-  let lastAnalysis: FailureAnalysis | null = null;
 
   try {
     while (attempt <= maxRetries) {
@@ -903,13 +1020,13 @@ async function main() {
       }
 
       // MODIFICADO: Pasar contextService a getOrGenerateAssets
-      const testAssets = await getOrGenerateAssets(testCase, fullDefinitionPath, llmService, contextService);
+      const testAssets = await getOrGenerateAssets(testCase, fullDefinitionPath, llmService, contextService, sharedMcpClient);
       const enhancedAssets = learningSystem.enhanceAIAssets(testAssets, fullUrl);
       const testFileName = testCase.name.replace(/\s+/g, '-').toLowerCase();
       const testFilePath = `tests/generated/${testFileName}.spec.ts`;
 
-      execSync(`npm run generate:pom -- ${fullDefinitionPath}`, { stdio: 'inherit' });
-      execSync(`npm run generate:spec -- ${fullDefinitionPath} ${testCasePath}`, { stdio: 'inherit' });
+      execSync(`npm run generate:pom -- "${fullDefinitionPath}"`, { stdio: 'inherit' });
+      execSync(`npm run generate:spec -- "${fullDefinitionPath}" "${testCasePath}"`, { stdio: 'inherit' });
 
       // NUEVO: Control total del proceso Playwright
       try {
@@ -1040,7 +1157,7 @@ async function main() {
           realTimeContext, // NUEVO: contexto híper-rico con MCP
           similarMemories,
         );
-        lastAnalysis = analysis;
+        // Análisis de falla almacenado para uso futuro
 
         if (similarMemories.length > 0) {
           console.log('✅ ¡Recuerdos encontrados!', similarMemories.length, 'experiencias pasadas');

@@ -10,7 +10,7 @@ interface SelectorOptions {
 }
 
 interface SelectorDef {
-  type: 'locator' | 'getByRole' | 'getByText' | 'getByLabel' | 'getByPlaceholder' | 'css';
+  type: 'locator' | 'getByRole' | 'getByText' | 'getByLabel' | 'getByPlaceholder' | 'getByTestId' | 'getByTitle' | 'getByAltText' | 'css';
   value: string;
   options?: SelectorOptions;
 }
@@ -18,7 +18,7 @@ interface SelectorDef {
 interface LocatorAction {
   name: string;
   elementType?: string;
-  actions: ('click' | 'fill' | 'check' | 'select' | 'clear' | 'getValue' | 'assertText' | 'assertVisible' | 'waitFor')[];
+  actions: ('click' | 'fill' | 'check' | 'uncheck' | 'select' | 'clear' | 'getValue' | 'hover' | 'type' | 'press' | 'focus' | 'assertText' | 'assertVisible' | 'waitFor')[];
   selectors: SelectorDef[];
   waitBefore?: string;
   validateAfter?: boolean;
@@ -92,6 +92,12 @@ const buildLocatorsArray = (selectors: SelectorDef[]): string => {
         return `      this.page.getByPlaceholder('${value}'${optionsString})`;
       case 'getByText':
         return `      this.page.getByText('${value}'${optionsString})`;
+      case 'getByTestId':
+        return `      this.page.getByTestId('${value}'${optionsString})`;
+      case 'getByTitle':
+        return `      this.page.getByTitle('${value}'${optionsString})`;
+      case 'getByAltText':
+        return `      this.page.getByAltText('${value}'${optionsString})`;
       case 'css':
       case 'locator':
       default:
@@ -100,6 +106,7 @@ const buildLocatorsArray = (selectors: SelectorDef[]): string => {
   });
   return `    const locators = [\n${selectorLines.join(',\n')}\n    ];`;
 };
+
 
 
 const generateMethodsForElement = (loc: LocatorAction, testSteps: TestStep[]): string => {
@@ -191,9 +198,14 @@ ${buildLocatorsArray(loc.selectors)}
     if (step.action.startsWith('click')) allRequiredActions.add('click');
     if (step.action.startsWith('fill')) allRequiredActions.add('fill');
     if (step.action.startsWith('check')) allRequiredActions.add('check');
+    if (step.action.startsWith('uncheck')) allRequiredActions.add('uncheck');
     if (step.action.startsWith('select')) allRequiredActions.add('select');
     if (step.action.startsWith('clear')) allRequiredActions.add('clear');
     if (step.action.startsWith('getValue')) allRequiredActions.add('getValue');
+    if (step.action.startsWith('hover')) allRequiredActions.add('hover');
+    if (step.action.startsWith('type')) allRequiredActions.add('type');
+    if (step.action.startsWith('press')) allRequiredActions.add('press');
+    if (step.action.startsWith('focus')) allRequiredActions.add('focus');
     // Generar métodos de aserción específicos (como assertErrorMessageOneOf)
     if (step.action.startsWith('assert') && step.action.endsWith('OneOf')) {
       const assertMethod = `
@@ -394,6 +406,76 @@ ${buildLocatorsArray(loc.selectors)}
     const element = await this.findSmartly(locators, '${description}');
     await element.waitFor({ state: 'visible', timeout });
     console.log(\`${description} está disponible\`);
+  }`;
+        break;
+
+
+      case 'uncheck':
+        method = `
+  /**
+   * Desmarca ${description}
+   */
+  async ${methodName}(): Promise<void> {
+${buildLocatorsArray(loc.selectors)}
+    const element = await this.findSmartly(locators, '${description}');
+    if (!(await element.isChecked())) {
+      console.log(\`${description} ya estaba desmarcado.\`);
+      return;
+    }
+    await element.uncheck();
+    console.log(\`${description} desmarcado\`);
+  }`;
+        break;
+
+      case 'hover':
+        method = `
+  /**
+   * Hace hover sobre ${description}
+   */
+  async ${methodName}(): Promise<void> {
+${buildLocatorsArray(loc.selectors)}
+    const element = await this.findSmartly(locators, '${description}');
+    await element.hover();
+    console.log(\`Hover realizado en ${description}\`);
+  }`;
+        break;
+
+      case 'type':
+        method = `
+  /**
+   * Escribe texto caracter por caracter en ${description}
+   */
+  async ${methodName}(text: string, options?: { delay?: number }): Promise<void> {
+${buildLocatorsArray(loc.selectors)}
+    const element = await this.findSmartly(locators, '${description}');
+    await element.type(text, options);
+    console.log(\`Texto escrito en ${description}: "\${text}"\`);
+  }`;
+        break;
+
+      case 'press':
+        method = `
+  /**
+   * Presiona una tecla en ${description}
+   */
+  async ${methodName}(key: string): Promise<void> {
+${buildLocatorsArray(loc.selectors)}
+    const element = await this.findSmartly(locators, '${description}');
+    await element.press(key);
+    console.log(\`Tecla presionada en ${description}: "\${key}"\`);
+  }`;
+        break;
+
+      case 'focus':
+        method = `
+  /**
+   * Enfoca ${description}
+   */
+  async ${methodName}(): Promise<void> {
+${buildLocatorsArray(loc.selectors)}
+    const element = await this.findSmartly(locators, '${description}');
+    await element.focus();
+    console.log(\`${description} enfocado\`);
   }`;
         break;
     }

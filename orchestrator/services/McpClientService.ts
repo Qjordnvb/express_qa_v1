@@ -443,21 +443,18 @@ export class MCPClientService {
       }
 
       // Obtener snapshot del árbol de accesibilidad
-      console.log('[MCP] Obteniendo accessibility tree...');
       const snapshotResult = await this.mcpClient.callTool({
         name: 'browser_snapshot',
         arguments: {}
       });
 
       // Obtener mensajes de consola
-      console.log('[MCP] Obteniendo mensajes de consola...');
       const consoleResult = await this.mcpClient.callTool({
         name: 'browser_console_messages',
         arguments: {}
       });
 
       // Obtener peticiones de red
-      console.log('[MCP] Obteniendo peticiones de red...');
       const networkResult = await this.mcpClient.callTool({
         name: 'browser_network_requests',
         arguments: {}
@@ -466,7 +463,6 @@ export class MCPClientService {
       // Obtener screenshot (opcional)
       let screenshot: Buffer | undefined;
       try {
-        console.log('[MCP] Obteniendo screenshot...');
         const screenshotResult = await this.mcpClient.callTool({
           name: 'browser_take_screenshot',
           arguments: { raw: true, fullPage: true }
@@ -487,9 +483,7 @@ export class MCPClientService {
       // ✅ REHABILITADO: Obtener información específica del DOM con atributos HTML
       let jsElements: any[] = [];
       try {
-        console.log('[MCP] 🔧 Ejecutando getJavaScriptElementData rehabilitado...');
         jsElements = await this.getJavaScriptElementData();
-
       } catch (error) {
         console.warn('[MCP] ⚠️ No se pudo obtener información del DOM:', error);
       }
@@ -501,10 +495,8 @@ export class MCPClientService {
       // ✅ REHABILITADO: Correlacionar YAML + JavaScript para obtener elementos híbridos
       let finalElements: any[] = [];
       if (jsElements.length > 0) {
-        console.log('[MCP] 🔗 Correlacionando YAML + JavaScript...');
         finalElements = this.correlateYamlWithJavaScript(yamlElements, jsElements);
       } else {
-        console.log('[MCP] ⚠️ Cayendo a solo elementos YAML');
         finalElements = yamlElements;
       }
 
@@ -522,7 +514,7 @@ export class MCPClientService {
         pageInfo
       };
 
-      console.log(`[MCP] ✅ Contexto híbrido obtenido - ${finalElements.length} elementos MCP enriquecidos`);
+      console.log(`[MCP] ✅ Contexto obtenido - ${finalElements.length} elementos detectados`);
       return context;
 
     } catch (error) {
@@ -698,15 +690,11 @@ export class MCPClientService {
    * NUEVO: Obtiene contexto híbrido completo sin hardcodeo - correlación automática
    */
   async getCompleteContext(url?: string): Promise<MCPContext & { hybridElements?: any[], rawJavaScriptData?: any[] }> {
-    console.log('[MCP] Obteniendo contexto híbrido completo sin hardcodeo...');
-
     // Obtener contexto básico (ARIA snapshot con refs)
     const basicContext = await this.getRealTimeContext(url);
 
     // Enriquecer elementos MCP con información de atributos que ya proporciona
     const hybridElements = this.enrichMcpElements(basicContext.interactiveElements);
-
-    console.log(`[MCP] ✅ Contexto híbrido obtenido - ${basicContext.interactiveElements.length} elementos MCP enriquecidos`);
 
     return {
       ...basicContext,
@@ -754,94 +742,180 @@ export class MCPClientService {
   }
 
   /**
-   * Genera selectores de Playwright basado en StableMcpService
+   * Genera 5 selectores priorizados con reasoning basado en StableMcpService + v4 UniversalMcpExtractor
    */
   private generatePlaywrightSelectors(element: any): any[] {
-    const selectors: any[] = [];
-
-    // Selector basado en role (prioridad alta)
-    if (element.role) {
-      if (element.name || element.text) {
-        selectors.push({
-          type: 'getByRole',
-          value: element.role,
-          options: { name: element.name || element.text }
-        });
-      } else {
-        selectors.push({
-          type: 'getByRole',
-          value: element.role
-        });
-      }
-    }
-
-    // Selector por ID (muy específico)
-    if (element.attributes?.id) {
-      selectors.push({
-        type: 'css',
-        value: `#${element.attributes.id}`
-      });
-    }
-
-    // Selector por type y tagName (específico para inputs)
-    const type = element.attributes?.type || element.type;
-    const tagName = element.tagName || this.inferTagName(element);
-    if (type && tagName) {
-      selectors.push({
-        type: 'css',
-        value: `${tagName}[type="${type}"]`
-      });
-    }
-
-    // Selector por name
+    const prioritizedSelectors: any[] = [];
+    
+    // Extraer atributos disponibles
+    const id = element.attributes?.id || element.id;
     const name = element.attributes?.name || element.name;
-    if (name) {
-      selectors.push({
-        type: 'css',
-        value: `[name="${name}"]`
+    const type = element.attributes?.type || element.type;
+    const placeholder = element.attributes?.placeholder || element.placeholder;
+    const className = element.attributes?.class || element.attributes?.className || element.className;
+    const tagName = element.tagName || this.inferTagName(element);
+    const text = element.text || element.name;
+    const role = element.role;
+    
+    // Generar pool de selectores candidatos con confiabilidad
+    const selectorCandidates: Array<{selector: any, confidence: number, reasoning: string}> = [];
+    
+    // PRIORIDAD 1: Role con name (MÁS ROBUSTO según Playwright)
+    if (role && text && this.isValidPlaywrightRole(role)) {
+      selectorCandidates.push({
+        selector: { type: 'getByRole', value: role, options: { name: text } },
+        confidence: 95,
+        reasoning: 'Most robust - role with accessible name'
       });
     }
-
-    // Selector por placeholder
-    const placeholder = element.attributes?.placeholder;
-    if (placeholder) {
-      selectors.push({
-        type: 'getByPlaceholder',
-        value: placeholder
+    
+    // PRIORIDAD 1: Label asociado (MÁS ROBUSTO)
+    if (text && text.trim() !== '') {
+      selectorCandidates.push({
+        selector: { type: 'getByLabel', value: text },
+        confidence: 90,
+        reasoning: 'Most robust - associated label'
       });
     }
-
-    // ✅ NUEVO: Selectores para elementos dinámicos
+    
+    // PRIORIDAD 1: Test ID (MÁS ROBUSTO para testing)
     if (element.attributes?.dataTestId || element.dataTestId) {
-      selectors.push({
-        type: 'getByTestId',
-        value: element.attributes?.dataTestId || element.dataTestId
+      const testId = element.attributes?.dataTestId || element.dataTestId;
+      selectorCandidates.push({
+        selector: { type: 'getByTestId', value: testId },
+        confidence: 88,
+        reasoning: 'Most robust - dedicated test ID'
       });
     }
-
-    if (element.attributes?.dataCy || element.dataCy) {
-      selectors.push({
-        type: 'css',
-        value: `[data-cy="${element.attributes?.dataCy || element.dataCy}"]`
+    
+    // PRIORIDAD 2: Placeholder específico (ROBUSTO)
+    if (placeholder && placeholder.trim() !== '') {
+      selectorCandidates.push({
+        selector: { type: 'getByPlaceholder', value: placeholder },
+        confidence: 85,
+        reasoning: 'High reliability - placeholder text'
       });
     }
-
-    if (element.attributes?.dataQa || element.dataQa) {
-      selectors.push({
-        type: 'css',
-        value: `[data-qa="${element.attributes?.dataQa || element.dataQa}"]`
+    
+    // PRIORIDAD 2: Role sin name (ROBUSTO)
+    if (role && this.isValidPlaywrightRole(role)) {
+      selectorCandidates.push({
+        selector: { type: 'getByRole', value: role },
+        confidence: 80,
+        reasoning: 'High reliability - semantic role'
       });
     }
-
-    // Selector por texto
-    if (element.text) {
-      selectors.push({
-        type: 'getByText',
-        value: element.text
+    
+    // PRIORIDAD 3: Texto visible (MEDIANAMENTE ROBUSTO)
+    if (text && text.trim() !== '') {
+      selectorCandidates.push({
+        selector: { type: 'getByText', value: text },
+        confidence: 75,
+        reasoning: 'Medium reliability - visible text'
       });
     }
-
-    return this.validatePlaywrightSelectors(selectors);
+    
+    // PRIORIDAD 4: Title attribute (MENOS ROBUSTO)
+    if (element.attributes?.title && element.attributes.title.trim() !== '') {
+      selectorCandidates.push({
+        selector: { type: 'getByTitle', value: element.attributes.title },
+        confidence: 65,
+        reasoning: 'Lower reliability - title attribute'
+      });
+    }
+    
+    // PRIORIDAD 4: Alt text para imágenes (MENOS ROBUSTO)
+    if (element.attributes?.alt && element.attributes.alt.trim() !== '') {
+      selectorCandidates.push({
+        selector: { type: 'getByAltText', value: element.attributes.alt },
+        confidence: 60,
+        reasoning: 'Lower reliability - alt text'
+      });
+    }
+    
+    // PRIORIDAD 5: CSS locators - ID único (FALLBACK)
+    if (id && id.trim() !== '') {
+      selectorCandidates.push({
+        selector: { type: 'locator', value: `#${id}` },
+        confidence: 55,
+        reasoning: 'Fallback option - unique ID'
+      });
+    }
+    
+    // PRIORIDAD 5: CSS locators - Name + Type (FALLBACK)
+    if (name && type && name.trim() !== '' && type.trim() !== '') {
+      selectorCandidates.push({
+        selector: { type: 'locator', value: `${tagName}[name="${name}"][type="${type}"]` },
+        confidence: 50,
+        reasoning: 'Fallback option - name and type'
+      });
+    }
+    
+    // PRIORIDAD 5: XPath como último recurso (MENOS RECOMENDADO)
+    if (type) {
+      selectorCandidates.push({
+        selector: { type: 'locator', value: `//${tagName}[@type="${type}"]` },
+        confidence: 45,
+        reasoning: 'Last resort - XPath selector'
+      });
+    } else if (role) {
+      selectorCandidates.push({
+        selector: { type: 'locator', value: `//*[@role="${role}"]` },
+        confidence: 40,
+        reasoning: 'Last resort - XPath by role'
+      });
+    }
+    
+    // Ordenar por confiabilidad y seleccionar los mejores 5
+    const sortedCandidates = selectorCandidates
+      .sort((a, b) => b.confidence - a.confidence)
+      .slice(0, 5);
+    
+    // Asignar prioridades 1-5 y construir selectores finales
+    sortedCandidates.forEach((candidate, index) => {
+      const priority = index + 1;
+      prioritizedSelectors.push({
+        ...candidate.selector,
+        priority,
+        reason: candidate.reasoning
+      });
+    });
+    
+    // Si no tenemos 5 selectores, completar con estrategias adicionales
+    while (prioritizedSelectors.length < 5) {
+      const fallbackPriority = prioritizedSelectors.length + 1;
+      prioritizedSelectors.push({
+        type: 'locator',
+        value: `${tagName}:nth-of-type(${fallbackPriority})`,
+        priority: fallbackPriority,
+        reason: `Fallback ${fallbackPriority} - nth-of-type selector`
+      });
+    }
+    
+    const validatedSelectors = this.validatePlaywrightSelectors(prioritizedSelectors);
+    
+    return validatedSelectors;
+  }
+  
+  /**
+   * Verifica si un role es válido para Playwright getByRole
+   */
+  private isValidPlaywrightRole(role: string): boolean {
+    const validRoles = [
+      'alert', 'alertdialog', 'application', 'article', 'banner', 'blockquote',
+      'button', 'caption', 'cell', 'checkbox', 'code', 'columnheader', 'combobox',
+      'complementary', 'contentinfo', 'definition', 'deletion', 'dialog', 'directory',
+      'document', 'emphasis', 'feed', 'figure', 'form', 'grid', 'gridcell',
+      'group', 'heading', 'img', 'insertion', 'link', 'list', 'listbox', 'listitem',
+      'log', 'main', 'marquee', 'math', 'meter', 'menu', 'menubar', 'menuitem',
+      'menuitemcheckbox', 'menuitemradio', 'navigation', 'none', 'note', 'option',
+      'paragraph', 'presentation', 'progressbar', 'radio', 'radiogroup', 'region',
+      'row', 'rowgroup', 'rowheader', 'scrollbar', 'search', 'searchbox', 'separator',
+      'slider', 'spinbutton', 'status', 'strong', 'subscript', 'superscript', 'switch',
+      'tab', 'table', 'tablist', 'tabpanel', 'term', 'textbox', 'time', 'timer',
+      'toolbar', 'tooltip', 'tree', 'treegrid', 'treeitem'
+    ];
+    return validRoles.includes(role?.toLowerCase());
   }
 
   /**
@@ -966,7 +1040,6 @@ export class MCPClientService {
     }
 
     try {
-      console.log('[MCP] 🔧 Ejecutando browser_evaluate rehabilitado...');
 
       // ✅ SOLUCIÓN EXITOSA: JavaScript directo sin parámetro ref
       const result = await this.mcpClient.callTool({
@@ -975,11 +1048,11 @@ export class MCPClientService {
           function: `() => {
             // Extraer TODOS los elementos interactivos con atributos HTML REALES + ELEMENTOS DINÁMICOS
             const baseSelector = 'input, button, select, textarea, a[href], [role], [tabindex]:not([tabindex="-1"])';
-            
+
             // Selectores adicionales para elementos dinámicos
             const dynamicSelectors = [
               '[data-testid]',
-              '[data-cy]', 
+              '[data-cy]',
               '[data-qa]',
               '[data-automation]',
               '[id*="react"]',
@@ -997,7 +1070,7 @@ export class MCPClientService {
               '[onchange]',
               '[onsubmit]'
             ];
-            
+
             // Combinar selectores base + dinámicos
             const allSelectors = baseSelector + ', ' + dynamicSelectors.join(', ');
             const elements = document.querySelectorAll(allSelectors);
@@ -1103,24 +1176,6 @@ export class MCPClientService {
 
         try {
           const htmlElements = JSON.parse(jsonData);
-          console.log(`[MCP] ✅ HTML parseado: ${htmlElements.length} elementos`);
-
-          // Debug: Mostrar tipos detectados incluyendo elementos dinámicos
-          htmlElements.forEach((el: any) => {
-            if (el.type === 'password') {
-              console.log(`[MCP] 🔐 PASSWORD detectado: #${el.id}`);
-            }
-            if (el.type === 'email') {
-              console.log(`[MCP] 📧 EMAIL detectado: #${el.id}`);
-            }
-            if (el.type === 'submit') {
-              console.log(`[MCP] 🚀 SUBMIT detectado: "${el.textContent}"`);
-            }
-            if (el.isDynamic) {
-              console.log(`[MCP] ⚡ DINÁMICO detectado: ${el.dynamicType} - ${el.dataTestId || el.dataCy || el.id || el.className}`);
-            }
-          });
-
           return htmlElements;
 
         } catch (parseError) {
@@ -1145,8 +1200,6 @@ export class MCPClientService {
    */
   private correlateYamlWithJavaScript(yamlElements: any[], jsElements: any[]): any[] {
     const hybridElements: any[] = [];
-
-    console.log(`[MCP] 🔗 Correlacionando ${yamlElements.length} elementos YAML con ${jsElements.length} elementos JS...`);
 
     // Estrategia de correlación completamente genérica
     yamlElements.forEach((yamlEl, yamlIndex) => {
@@ -1245,8 +1298,6 @@ export class MCPClientService {
       hybridElements.push(hybridElement);
     });
 
-    console.log(`[MCP] ✅ Correlación completada: ${hybridElements.filter(el => el.htmlType).length}/${hybridElements.length} elementos enriquecidos`);
-
     return hybridElements;
   }
 
@@ -1255,7 +1306,7 @@ export class MCPClientService {
    */
   private validatePlaywrightSelectors(selectors: any[]): any[] {
     const validPlaywrightTypes = [
-      'css',
+      'locator',      // Para CSS y XPath selectores
       'getByRole',
       'getByText',
       'getByLabel',
@@ -1283,21 +1334,18 @@ export class MCPClientService {
     return selectors.filter(selector => {
       // Verificar tipo de selector válido
       if (!validPlaywrightTypes.includes(selector.type)) {
-        console.warn(`⚠️ Selector type '${selector.type}' no es válido para Playwright`);
         return false;
       }
 
       // Verificar roles válidos para getByRole
       if (selector.type === 'getByRole') {
         if (!validPlaywrightRoles.includes(selector.value)) {
-          console.warn(`⚠️ Role '${selector.value}' no es válido para Playwright getByRole`);
           return false;
         }
       }
 
       // Verificar que tengan valor
       if (!selector.value || selector.value.trim() === '') {
-        console.warn(`⚠️ Selector ${selector.type} no tiene valor válido`);
         return false;
       }
 
@@ -1306,113 +1354,42 @@ export class MCPClientService {
   }
 
   /**
-   * NUEVO: Genera selectores automáticamente sin hardcodeo
+   * NUEVO: Genera selectores automáticamente sin hardcodeo - USA EL NUEVO SISTEMA DE PRIORIZACIÓN
    */
   private generateSelectorsAutomatically(yamlEl: any, jsEl?: any): any[] {
-    const selectors: any[] = [];
+    // Crear elemento híbrido para usar el nuevo sistema
+    const hybridElement = {
+      role: yamlEl.role,
+      name: yamlEl.name,
+      text: yamlEl.name,
+      attributes: {}
+    };
 
-    // Selector basado en role YAML (siempre disponible)
-    if (yamlEl.role && yamlEl.name) {
-      selectors.push({
-        type: 'getByRole',
-        value: yamlEl.role,
-        options: { name: yamlEl.name }
-      });
-    } else if (yamlEl.role) {
-      selectors.push({
-        type: 'getByRole',
-        value: yamlEl.role
-      });
-    }
-
-    // Si tenemos datos JavaScript, generar selectores más específicos
+    // Si tenemos datos JavaScript, enriquecer el elemento
     if (jsEl) {
-      // Selector por ID (más confiable)
-      if (jsEl.id) {
-        selectors.push({
-          type: 'css',
-          value: `#${jsEl.id}`
-        });
-      }
-
-      // Selector por type y tag (muy específico)
-      if (jsEl.type && jsEl.tagName) {
-        selectors.push({
-          type: 'css',
-          value: `${jsEl.tagName}[type="${jsEl.type}"]`
-        });
-      }
-
-      // Selector por name
-      if (jsEl.name) {
-        selectors.push({
-          type: 'css',
-          value: `[name="${jsEl.name}"]`
-        });
-      }
-
-      // Selector por placeholder
-      if (jsEl.placeholder) {
-        selectors.push({
-          type: 'getByPlaceholder',
-          value: jsEl.placeholder
-        });
-      }
-
-      // ✅ NUEVO: Selectores dinámicos basados en atributos de testing
-      if (jsEl.dataTestId) {
-        selectors.push({
-          type: 'getByTestId',
-          value: jsEl.dataTestId
-        });
-      }
-
-      if (jsEl.dataCy) {
-        selectors.push({
-          type: 'css',
-          value: `[data-cy="${jsEl.dataCy}"]`
-        });
-      }
-
-      if (jsEl.dataQa) {
-        selectors.push({
-          type: 'css',
-          value: `[data-qa="${jsEl.dataQa}"]`
-        });
-      }
-
-      // Selector por texto si está disponible
-      if (jsEl.textContent) {
-        selectors.push({
-          type: 'getByText',
-          value: jsEl.textContent
-        });
-      }
+      hybridElement.attributes = {
+        id: jsEl.id,
+        name: jsEl.name,
+        type: jsEl.type,
+        placeholder: jsEl.placeholder,
+        class: jsEl.className,
+        dataTestId: jsEl.dataTestId,
+        dataCy: jsEl.dataCy,
+        dataQa: jsEl.dataQa
+      };
+      hybridElement.text = jsEl.textContent || jsEl.innerText || yamlEl.name;
     }
 
-    return this.validatePlaywrightSelectors(selectors);
+    // Usar el nuevo sistema de generación priorizada
+    return this.generatePlaywrightSelectors(hybridElement);
   }
 
   /**
-   * NUEVO: Genera selectores solo con datos YAML
+   * NUEVO: Genera selectores solo con datos YAML - USA EL NUEVO SISTEMA DE PRIORIZACIÓN
    */
   private generateSelectorsFromYaml(yamlEl: any): any[] {
-    const selectors: any[] = [];
-
-    if (yamlEl.role && yamlEl.name) {
-      selectors.push({
-        type: 'getByRole',
-        value: yamlEl.role,
-        options: { name: yamlEl.name }
-      });
-    } else if (yamlEl.role) {
-      selectors.push({
-        type: 'getByRole',
-        value: yamlEl.role
-      });
-    }
-
-    return this.validatePlaywrightSelectors(selectors);
+    // Usar el nuevo sistema con solo datos YAML
+    return this.generatePlaywrightSelectors(yamlEl);
   }
 
   /**
@@ -1500,5 +1477,46 @@ export class MCPClientService {
    */
   isConnected(): boolean {
     return !!(this.mcpClient && this.transport);
+  }
+
+  /**
+   * NUEVO: Espera y valida que la URL actual contenga el texto especificado
+   */
+  async waitForUrlContains(expectedUrlPart: string, timeoutMs: number = 15000): Promise<boolean> {
+    if (!this.mcpClient) {
+      throw new Error('Cliente MCP no inicializado');
+    }
+
+    console.log(`[MCP] ⏳ Esperando URL que contenga: ${expectedUrlPart}`);
+    
+    const startTime = Date.now();
+    
+    while (Date.now() - startTime < timeoutMs) {
+      try {
+        const pageInfo = await this.getPageInfo();
+        
+        if (pageInfo.url.includes(expectedUrlPart)) {
+          console.log(`[MCP] ✅ URL válida encontrada: ${pageInfo.url}`);
+          return true;
+        }
+        
+        // Esperar antes del siguiente intento
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+      } catch (error) {
+        console.warn(`[MCP] ⚠️ Error verificando URL:`, error);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    // Si llegamos aquí, timeout
+    try {
+      const finalPageInfo = await this.getPageInfo();
+      console.error(`[MCP] ❌ Timeout esperando URL con '${expectedUrlPart}'. URL actual: ${finalPageInfo.url}`);
+    } catch {
+      console.error(`[MCP] ❌ Timeout esperando URL con '${expectedUrlPart}'. No se pudo obtener URL actual.`);
+    }
+    
+    return false;
   }
 }

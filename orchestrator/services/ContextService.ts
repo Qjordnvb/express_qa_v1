@@ -1,6 +1,7 @@
 // orchestrator/services/ContextService.ts
 import { Page } from '@playwright/test';
 import { MCPClientService, MCPContext } from './McpClientService';
+import { MCPManager } from './MCPManager';
 
 export interface RealTimeContext {
   // Datos principales del DOM
@@ -41,8 +42,20 @@ export interface RealTimeContext {
 export class ContextService {
   private mcpClient: MCPClientService;
 
-  constructor() {
-    this.mcpClient = new MCPClientService();
+  /**
+   * Constructor con dependency injection para MCPManager
+   * @param mcpClient - Instancia MCP compartida (opcional, usa MCPManager por defecto)
+   */
+  constructor(mcpClient?: MCPClientService) {
+    if (mcpClient) {
+      // Usar instancia MCP inyectada (para shared singleton)
+      this.mcpClient = mcpClient;
+      console.log('✅ [ContextService] Usando instancia MCP compartida (inyectada)');
+    } else {
+      // Fallback: usar MCPManager singleton
+      this.mcpClient = MCPManager.getInstance().getMCPClient();
+      console.log('✅ [ContextService] Usando instancia MCP compartida (MCPManager)');
+    }
   }
 
   /**
