@@ -73,6 +73,8 @@ export class VisualAIHelper {
     const result = (await this.llmService.getTestAssetsFromIA(
       [prompt],
       screenshot.toString('base64'),
+      [], // detectedPatterns
+      undefined, // domElements (no necesarios para búsqueda visual específica)
     )) as unknown as VisualFindResult;
 
     if (result && result.found) {
@@ -96,6 +98,8 @@ export class VisualAIHelper {
     const result = (await this.llmService.getTestAssetsFromIA(
       [prompt],
       screenshot.toString('base64'),
+      [], // detectedPatterns
+      undefined, // domElements (no necesarios para comparación visual)
     )) as unknown as VisualCompareResult;
 
     return result && result.matches && result.confidence > 0.8;
@@ -121,6 +125,8 @@ export class VisualAIHelper {
     const result = (await this.llmService.getTestAssetsFromIA(
       [prompt],
       currentScreenshot.toString('base64'),
+      [], // detectedPatterns
+      undefined, // domElements (no necesarios para detección de cambios)
     )) as unknown as UIChangeResult;
 
     return result;
