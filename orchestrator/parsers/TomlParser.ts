@@ -46,9 +46,9 @@ export class TomlParser {
       return {
         name: parsed.name as string,
         path: parsed.path as string,
-        steps: parsed.steps || [],
-        validation: parsed.validation,
-        hints: parsed.hints,
+        steps: (parsed.steps as UserStoryStep[]) || [],
+        validation: parsed.validation as UserStory['validation'],
+        hints: parsed.hints as UserStory['hints'],
       };
     } catch (error) {
       if (error instanceof Error) {
@@ -64,6 +64,7 @@ export class TomlParser {
    * @returns TOML string representation
    */
   static userStoryToToml(userStory: UserStory): string {
-    return TOML.stringify(userStory as Record<string, unknown>);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return TOML.stringify(userStory as any);
   }
 }
