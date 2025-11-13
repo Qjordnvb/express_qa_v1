@@ -3,6 +3,7 @@ import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/ge
 import { ILlmService } from './ILlmService';
 import { AIAsserts } from '../failure-analyzer';
 import { DetectedPattern } from '../ui-pattern-detector';
+import { DOMElement } from '../dom-extractor';
 
 const generationConfig = {
   temperature: 0.05, // Hacemos a la IA menos "creativa" para que siga el formato
@@ -41,9 +42,10 @@ export class GoogleGeminiService implements ILlmService {
     userStory: string[],
     imageBase64: string,
     detectedPatterns: DetectedPattern[] = [],
+    domElements?: DOMElement[],
   ): Promise<AIAsserts | null> {
     console.log(
-      'Enviando historia de usuario estructurada (Gherkin), imagen y contexto de UI a Google Gemini...',
+      'Enviando historia de usuario estructurada (Gherkin), imagen, contexto de UI y datos del DOM a Google Gemini...',
     );
 
     const userStoryAsString = userStory.join('\n');
@@ -57,11 +59,65 @@ export class GoogleGeminiService implements ILlmService {
           )}. Usa este contexto para generar selectores y pasos más precisos y relevantes. Por ejemplo, si detectas un 'form', prioriza los selectores dentro de ese formulario.`
         : '';
 
+    // Contexto de elementos del DOM extraídos
+    const domContext = domElements && domElements.length > 0
+      ? `
+   📊 DATOS ESTRUCTURADOS DEL DOM (CRÍTICO - USA ESTO):
+   =====================================================
+
+   IMPORTANTE: NO adivines selectores de la imagen. USA los datos reales del DOM.
+
+   A continuación se muestran TODOS los elementos interactivos encontrados en la página:
+
+   ${JSON.stringify(domElements.map(el => ({
+     tagName: el.tagName,
+     id: el.id,
+     classes: el.classes,
+     name: el.name,
+     type: el.type,
+     placeholder: el.placeholder,
+     ariaLabel: el.ariaLabel,
+     ariaRole: el.ariaRole,
+     textContent: el.textContent ? el.textContent.substring(0, 50) : undefined,
+     dataTestId: el.dataTestId,
+     xpath: el.xpath,
+     cssPath: el.cssPath
+   })), null, 2)}
+
+   INSTRUCCIONES PARA GENERAR SELECTORES (ORDEN DE PRIORIDAD):
+   1️⃣ PRIORIDAD 1: Selectores ARIA/Roles
+      - getByRole() con nombre exacto si existe ariaRole
+      - getByLabel() si existe ariaLabel
+
+   2️⃣ PRIORIDAD 2: Atributos estables
+      - getByTestId() si existe dataTestId
+      - Selector por id (#id) si existe
+      - getByPlaceholder() si existe placeholder
+      - Selector por name si existe
+
+   3️⃣ PRIORIDAD 3: Estructura DOM (YA CALCULADA)
+      - cssPath (ya está pre-calculado, úsalo directamente)
+      - xpath (ya está pre-calculado, úsalo directamente)
+
+   4️⃣ PRIORIDAD 4: Texto (ÚLTIMO RECURSO)
+      - getByText() solo si no hay otra opción
+      - ADVERTENCIA: Los selectores de texto son frágiles
+
+   REGLA DE ORO: Para cada elemento, genera MÍNIMO 3 selectores siguiendo estas prioridades.
+   `
+      : `
+   ⚠️ ADVERTENCIA: No se proporcionaron datos del DOM.
+   Deberás adivinar selectores basándote únicamente en la imagen.
+   Esto puede resultar en selectores menos robustos.
+   `;
+
     // El prompt que ya perfeccionamos
     const prompt = `
 
     CONTEXTO ESTRUCTURAL DE LA PÁGINA:
    ${patternsContext}
+
+   ${domContext}
 
    CONTEXTO:
    Eres "Visionary QA", un motor de generación de código para pruebas automatizadas con Playwright y TypeScript. Tu única función es analizar los datos de entrada y devolver un objeto JSON estructurado que será usado para generar código de pruebas robusto y mantenible.

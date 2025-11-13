@@ -1,0 +1,53 @@
+# Historia de Usuario - Flujo de Búsqueda y Filtrado
+# Este archivo usa formato TOML para mejorar la legibilidad y estructura
+# Generador: Express QA v1 - TOML Parser
+
+name = "Search and Filter Flow"
+path = "/index.php?route=common/home"
+
+# Pasos de la historia de usuario usando estructura BDD
+[[steps]]
+type = "given"
+description = "estoy en la página de inicio"
+
+[[steps]]
+type = "when"
+description = "busco el producto MacBook"
+value = "MacBook"
+target = "searchInput"
+
+[[steps]]
+type = "when"
+description = "hago clic en el botón de búsqueda"
+target = "searchButton"
+
+[[steps]]
+type = "then"
+description = "debería ver la lista de resultados de búsqueda"
+target = "searchResults"
+
+[[steps]]
+type = "when"
+description = "activo el filtro de stock"
+target = "stockFilterCheckbox"
+
+[[steps]]
+type = "then"
+description = "la lista de productos debe actualizarse"
+target = "productList"
+
+# Validaciones esperadas
+[validation]
+expectedResults = [
+  "La lista debe contener productos MacBook",
+  "Los productos filtrados deben estar en stock"
+]
+
+# Hints para ayudar al LLM a encontrar elementos más fácilmente
+[hints]
+searchInput = "search"
+searchButton = "button[type='button'].btn-default"
+stockFilterCheckbox = "input#mz-fss-0--1"
+stockFilterLabel = "label[for='mz-fss-0--1']"
+productList = ".product-layout"
+searchResults = ".product-thumb"

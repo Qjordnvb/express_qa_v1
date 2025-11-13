@@ -1,0 +1,48 @@
+# Historia de Usuario - Login con Credenciales Inválidas
+# Este archivo usa formato TOML para mejorar la legibilidad y estructura
+# Generador: Express QA v1 - TOML Parser
+
+name = "Error user not register"
+path = "/index.php?route=account/login"
+
+# Pasos de la historia de usuario usando estructura BDD
+[[steps]]
+type = "given"
+description = "estoy en la página de login"
+
+[[steps]]
+type = "when"
+description = "ingreso un email incorrecto"
+value = "noexiste@example.com"
+target = "emailInput"
+
+[[steps]]
+type = "when"
+description = "ingreso una contraseña incorrecta"
+value = "password-incorrecto"
+target = "passwordInput"
+
+[[steps]]
+type = "when"
+description = "hago clic en el botón Login"
+target = "loginButton"
+
+[[steps]]
+type = "then"
+description = "debería ver un mensaje de error"
+target = "errorMessage"
+
+# Validaciones esperadas
+[validation]
+expectedErrors = [
+  "Warning: No match for E-Mail Address and/or Password.",
+  "Warning: Your account has exceeded allowed number of login attempts."
+]
+
+# Hints para ayudar al LLM a encontrar elementos más fácilmente
+[hints]
+form = "login-form"
+submitButton = "Login"
+errorContainer = "alert-danger"
+emailField = "input-email"
+passwordField = "input-password"
