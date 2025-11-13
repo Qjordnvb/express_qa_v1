@@ -1,0 +1,23 @@
+name = "Test Story"
+path = "/test-path"
+
+[[steps]]
+type = "given"
+description = "estoy en la página de prueba"
+
+[[steps]]
+type = "when"
+description = "hago clic en el botón"
+target = "testButton"
+
+[[steps]]
+type = "then"
+description = "debería ver el resultado"
+target = "result"
+
+[validation]
+expectedErrors = ["Error 1", "Error 2"]
+
+[hints]
+form = "test-form"
+submitButton = "Submit"
