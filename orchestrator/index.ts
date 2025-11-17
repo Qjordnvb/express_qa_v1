@@ -11,7 +11,6 @@ import { LearningSystem } from './learning-system';
 import { FailureAnalyzer, AIAsserts, FailureAnalysis } from './failure-analyzer';
 import { UIPatternDetector } from './ui-pattern-detector';
 import { DOMExtractor } from './dom-extractor';
-import { TomlParser } from './parsers/TomlParser';
 import playwrightConfig from '../playwright.config';
 
 interface TestCase {
@@ -95,48 +94,15 @@ async function main() {
   const llmService = getLlmService();
   const testCasePath = process.argv[2];
   if (!testCasePath) {
-    console.error('Error: La ruta al archivo .testcase.json o .testcase.toml es obligatoria.');
+    console.error('Error: La ruta al archivo .testcase.json es obligatoria.');
     process.exit(1);
   }
-
-  // 🆕 Soporte para TOML y JSON
-  let testCase: TestCase;
-  const isTomlFile = testCasePath.endsWith('.toml');
-  const isJsonFile = testCasePath.endsWith('.json');
-
-  if (isTomlFile) {
-    console.log('📄 Detectado archivo TOML, usando TomlParser...');
-    const tomlData = TomlParser.parseUserStory(testCasePath);
-    // Convertir formato TOML a formato TestCase esperado
-    testCase = {
-      name: tomlData.name,
-      path: tomlData.path,
-      userStory: tomlData.steps.map(step => {
-        const prefix = step.type === 'given' ? 'DADO' : step.type === 'when' ? 'CUANDO' : 'ENTONCES';
-        let description = `${prefix} que ${step.description}`;
-        if (step.value && step.target) {
-          description += ` "${step.value}" en ${step.target}`;
-        } else if (step.value) {
-          description += ` "${step.value}"`;
-        } else if (step.target) {
-          description += ` ${step.target}`;
-        }
-        return description;
-      })
-    };
-  } else if (isJsonFile) {
-    console.log('📄 Detectado archivo JSON, leyendo formato clásico...');
-    testCase = JSON.parse(fs.readFileSync(testCasePath, 'utf-8'));
-  } else {
-    console.error('❌ Error: El archivo debe ser .testcase.json o .testcase.toml');
-    process.exit(1);
-  }
-
+  const testCase: TestCase = JSON.parse(fs.readFileSync(testCasePath, 'utf-8'));
   console.log(`📋 Caso de prueba leído: "${testCase.name}"`);
 
   // --- MEJORA: Centralización y Organización de Rutas ---
   const storiesDir = path.dirname(testCasePath);
-  const testCaseName = path.basename(testCasePath).replace(/\.(testcase\.)?(json|toml)$/, '');
+  const testCaseName = path.basename(testCasePath, '.testcase.json');
 
   // 1. Definimos la nueva carpeta para los assets generados
   const assetsDir = path.join(storiesDir, '../generated-assets');
